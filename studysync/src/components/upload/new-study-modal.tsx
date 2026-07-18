@@ -209,6 +209,14 @@ export function NewStudyModal({
 
   async function handleSubmit() {
     if (!contentType) return;
+    if (
+      contentType !== "text" &&
+      contentType !== "youtube" &&
+      (!file || file.size === 0)
+    ) {
+      setError("Please upload or record a file before generating.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
 
@@ -233,7 +241,19 @@ export function NewStudyModal({
         method: "POST",
         body: formData,
       });
-      const json = (await res.json()) as ApiResponse<Study>;
+      const raw = await res.text();
+      let json: ApiResponse<Study>;
+      try {
+        json = JSON.parse(raw) as ApiResponse<Study>;
+      } catch {
+        setError(
+          res.status === 413
+            ? "File is too large. Use a file under 50 MB."
+            : `Server error (${res.status}). ${raw.slice(0, 160) || "Please try again."}`
+        );
+        setSubmitting(false);
+        return;
+      }
       if (!json.success) {
         setError(
           json.error.includes("Upgrade")
@@ -246,8 +266,12 @@ export function NewStudyModal({
       handleOpenChange(false);
       router.push(`/study/${json.data.id}`);
       router.refresh();
-    } catch {
-      setError("Something went wrong. Please try again.");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Something went wrong. Please try again."
+      );
       setSubmitting(false);
     }
   }

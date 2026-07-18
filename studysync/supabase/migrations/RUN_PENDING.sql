@@ -30,6 +30,8 @@ set allowed_mime_types = array[
   'audio/wav',
   'audio/mp4',
   'audio/x-m4a',
+  'audio/webm',
+  'audio/ogg',
   'text/plain',
   'application/octet-stream'
 ]

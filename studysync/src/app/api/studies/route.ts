@@ -1,3 +1,6 @@
+export const maxDuration = 60;
+export const dynamic = "force-dynamic";
+
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { apiError, apiSuccess } from "@/lib/api/response";
@@ -88,7 +91,7 @@ export async function POST(request: Request) {
     .from("profiles")
     .select("plan, uploads_used")
     .eq("user_id", user.id)
-    .single();
+    .maybeSingle();
 
   if (
     profile &&
@@ -143,19 +146,15 @@ export async function POST(request: Request) {
         upsert: false,
       });
 
-    if (
-      uploadError &&
-      (lower.endsWith(".pptx") || lower.endsWith(".ppt"))
-    ) {
+    if (uploadError) {
+      // Retry as octet-stream when bucket MIME allowlist rejects recordings/etc.
       const retry = await admin.storage.from("lectures").upload(path, buffer, {
-        contentType: "application/pdf",
+        contentType: "application/octet-stream",
         upsert: false,
       });
       if (retry.error) {
-        return apiError(`Upload failed: ${retry.error.message}`, 500);
+        return apiError(`Upload failed: ${uploadError.message}`, 500);
       }
-    } else if (uploadError) {
-      return apiError(`Upload failed: ${uploadError.message}`, 500);
     }
 
     fileUrl = path;
