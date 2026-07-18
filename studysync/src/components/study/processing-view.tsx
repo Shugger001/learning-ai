@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { Progress } from "@/components/ui/progress";
+import { ProcessingBar } from "@/components/ui/processing-bar";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Study } from "@/types/database";
 
@@ -77,10 +77,7 @@ export function ProcessingView({ study }: ProcessingViewProps) {
           <span>Progress</span>
           <span aria-live="polite">{study.processing_progress}%</span>
         </div>
-        <Progress
-          value={study.processing_progress}
-          aria-label="Processing progress"
-        />
+        <ProcessingBar value={study.processing_progress} className="h-2" />
       </div>
       <div className="space-y-3 pt-2" aria-hidden>
         <Skeleton className="h-4 w-full" />

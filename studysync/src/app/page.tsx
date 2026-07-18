@@ -5,6 +5,7 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LandingProductMock } from "@/components/landing/product-mock";
 
 const HERO_IMAGE =
   "https://images.unsplash.com/photo-1456513080880-7d93aaa2daf8?auto=format&fit=crop&w=2400&q=80";
@@ -195,45 +196,7 @@ export default function LandingPage() {
             viewport={{ once: true, margin: "-60px" }}
             transition={{ duration: 0.7, delay: 0.1, ease: EASE }}
           >
-            <div className="border border-white/15 bg-white/[0.04] p-5 backdrop-blur-sm sm:p-7">
-              <div className="mb-5 flex gap-2 text-xs font-medium tracking-wide text-white/50">
-                {["Notes", "Flashcards", "Quiz", "Chat"].map((tab, i) => (
-                  <span
-                    key={tab}
-                    className={
-                      i === 1
-                        ? "border-b border-[hsl(174_45%_55%)] pb-1 text-white"
-                        : "pb-1"
-                    }
-                  >
-                    {tab}
-                  </span>
-                ))}
-              </div>
-              <div className="mx-auto flex min-h-[11rem] max-w-sm flex-col items-center justify-center border border-white/20 bg-[hsl(222_40%_10%)] px-6 py-10 text-center shadow-[0_24px_60px_-20px_rgba(0,0,0,0.55)]">
-                <p className="text-xs uppercase tracking-wider text-white/40">
-                  Front
-                </p>
-                <p className="font-display mt-3 text-lg font-semibold leading-snug tracking-tight sm:text-xl">
-                  What causes the American Revolution?
-                </p>
-                <p className="mt-6 text-xs text-white/45">Tap to reveal</p>
-              </div>
-              <div className="mt-5 flex justify-center gap-2">
-                {["Again", "Hard", "Good", "Easy"].map((label, i) => (
-                  <span
-                    key={label}
-                    className={
-                      i >= 2
-                        ? "border border-[hsl(174_45%_45%)] px-2.5 py-1 text-xs text-[hsl(174_45%_72%)]"
-                        : "border border-white/15 px-2.5 py-1 text-xs text-white/45"
-                    }
-                  >
-                    {label}
-                  </span>
-                ))}
-              </div>
-            </div>
+            <LandingProductMock />
           </motion.div>
         </div>
       </section>

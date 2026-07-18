@@ -18,8 +18,24 @@ import {
 import { resolveStudyFilePaths } from "@/lib/studies/files";
 import { cn } from "@/lib/utils/cn";
 import { Button } from "@/components/ui/button";
+import { ProcessingBar } from "@/components/ui/processing-bar";
 import type { ApiResponse } from "@/types/api";
 import type { ContentType, Study } from "@/types/database";
+
+function relativeTime(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 48) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 14) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+}
 
 function kindFromStudy(study: Study): {
   label: string;
@@ -141,12 +157,7 @@ export function StudyCard({
 
           {study.status === "processing" ? (
             <div className="mt-4 space-y-2">
-              <div className="h-1 w-full overflow-hidden bg-muted">
-                <div
-                  className="h-full bg-primary transition-all"
-                  style={{ width: `${Math.min(100, study.processing_progress)}%` }}
-                />
-              </div>
+              <ProcessingBar value={study.processing_progress} />
               <p className="text-xs text-muted-foreground">
                 {study.processing_progress}% complete
               </p>
@@ -165,6 +176,12 @@ export function StudyCard({
           <div className="mt-auto flex items-center justify-between pt-5 text-xs text-muted-foreground">
             <span>
               {label} · {date}
+              {study.status === "complete" ? (
+                <>
+                  {" "}
+                  · updated {relativeTime(study.updated_at)}
+                </>
+              ) : null}
             </span>
             <span className="inline-flex items-center gap-0.5 font-medium text-foreground/70 opacity-0 transition-opacity group-hover:opacity-100">
               Open

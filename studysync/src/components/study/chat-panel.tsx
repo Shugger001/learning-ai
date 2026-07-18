@@ -18,6 +18,7 @@ export function ChatPanel({ studyId }: { studyId: string }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [streamingId, setStreamingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -31,7 +32,7 @@ export function ChatPanel({ studyId }: { studyId: string }) {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, streamingId]);
 
   async function send(questionOverride?: string) {
     const question = (questionOverride ?? input).trim();
@@ -39,6 +40,9 @@ export function ChatPanel({ studyId }: { studyId: string }) {
     setInput("");
     setLoading(true);
     setError(null);
+
+    const tempAssistantId = crypto.randomUUID();
+    setStreamingId(tempAssistantId);
     setMessages((prev) => [
       ...prev,
       {
@@ -49,20 +53,90 @@ export function ChatPanel({ studyId }: { studyId: string }) {
         content: question,
         created_at: new Date().toISOString(),
       },
+      {
+        id: tempAssistantId,
+        study_id: studyId,
+        user_id: "",
+        role: "assistant",
+        content: "",
+        created_at: new Date().toISOString(),
+      },
     ]);
 
-    const res = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ study_id: studyId, message: question }),
-    });
-    const json = (await res.json()) as ApiResponse<ChatMessage>;
-    setLoading(false);
-    if (!json.success) {
-      setError(json.error);
-      return;
+    try {
+      const res = await fetch("/api/chat?stream=1", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "text/event-stream",
+        },
+        body: JSON.stringify({ study_id: studyId, message: question }),
+      });
+
+      if (!res.ok || !res.body) {
+        const json = (await res.json().catch(() => null)) as ApiResponse<unknown> | null;
+        setError(json && !json.success ? json.error : "Chat failed");
+        setMessages((prev) => prev.filter((m) => m.id !== tempAssistantId));
+        setLoading(false);
+        setStreamingId(null);
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() ?? "";
+
+        for (const part of parts) {
+          const line = part
+            .split("\n")
+            .find((l) => l.startsWith("data: "));
+          if (!line) continue;
+          const payload = JSON.parse(line.slice(6)) as {
+            token?: string;
+            done?: boolean;
+            message?: ChatMessage;
+            error?: string;
+          };
+
+          if (payload.error) {
+            setError(payload.error);
+            setMessages((prev) => prev.filter((m) => m.id !== tempAssistantId));
+            break;
+          }
+
+          if (payload.token) {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === tempAssistantId
+                  ? { ...m, content: m.content + payload.token }
+                  : m
+              )
+            );
+          }
+
+          if (payload.done && payload.message) {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === tempAssistantId ? payload.message! : m
+              )
+            );
+          }
+        }
+      }
+    } catch {
+      setError("Chat failed");
+      setMessages((prev) => prev.filter((m) => m.id !== tempAssistantId));
     }
-    setMessages((prev) => [...prev, json.data]);
+
+    setLoading(false);
+    setStreamingId(null);
   }
 
   return (
@@ -99,7 +173,13 @@ export function ChatPanel({ studyId }: { studyId: string }) {
           >
             {m.role === "assistant" ? (
               <div className="prose-sm dark:prose-invert [&_p]:my-2">
-                <ReactMarkdown>{m.content}</ReactMarkdown>
+                <ReactMarkdown>{m.content || " "}</ReactMarkdown>
+                {streamingId === m.id ? (
+                  <span
+                    className="ml-0.5 inline-block h-4 w-1 animate-pulse bg-primary align-middle"
+                    aria-hidden
+                  />
+                ) : null}
               </div>
             ) : (
               m.content

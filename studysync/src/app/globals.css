@@ -99,3 +99,13 @@
     @apply border border-border/70 bg-card/80 shadow-[0_1px_0_hsl(var(--foreground)/0.04)] backdrop-blur-sm;
   }
 }
+
+.mindmap-path {
+  stroke: hsl(var(--border)) !important;
+  stroke-width: 1.5px;
+}
+
+.mindmap-path-focus {
+  stroke: hsl(var(--primary)) !important;
+  stroke-width: 2.5px;
+}

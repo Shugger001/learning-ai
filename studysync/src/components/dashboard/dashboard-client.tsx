@@ -13,16 +13,25 @@ import {
   Type,
   Video,
   Clapperboard,
+  X,
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { NewStudyModal } from "@/components/upload/new-study-modal";
 import { StudyCard } from "@/components/dashboard/study-card";
 import { FolderBar } from "@/components/dashboard/folder-bar";
+import { FlashcardsPanel } from "@/components/study/flashcards-panel";
 import { Button } from "@/components/ui/button";
+import { ProcessingBar } from "@/components/ui/processing-bar";
 import { cn } from "@/lib/utils/cn";
 import { FREE_LIMITS, type UsageRemaining } from "@/lib/billing/limits";
 import type { ApiResponse } from "@/types/api";
-import type { ContentType, Folder, PlanType, Study } from "@/types/database";
+import type {
+  ContentType,
+  Flashcard,
+  Folder,
+  PlanType,
+  Study,
+} from "@/types/database";
 
 export interface StudySummary {
   study_id: string;
@@ -103,6 +112,10 @@ export function DashboardClient({
   const [filter, setFilter] = useState<LibraryFilter>("all");
   const [folderId, setFolderId] = useState<string | null>(null);
   const [showMoreFormats, setShowMoreFormats] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [dueCards, setDueCards] = useState<Flashcard[]>([]);
+  const [dueLoading, setDueLoading] = useState(false);
+  const [dueCount, setDueCount] = useState(dueToday);
 
   const firstName = userName?.trim().split(/\s+/)[0] || null;
 
@@ -188,6 +201,18 @@ export function DashboardClient({
     }
   }
 
+  async function openDueReview() {
+    setReviewOpen(true);
+    setDueLoading(true);
+    const res = await fetch("/api/flashcards/due");
+    const json = (await res.json()) as ApiResponse<Flashcard[]>;
+    setDueLoading(false);
+    if (json.success) {
+      setDueCards(json.data);
+      setDueCount(json.data.length);
+    }
+  }
+
   const primaryCta =
     dueToday > 0 && continueStudy
       ? {
@@ -228,22 +253,39 @@ export function DashboardClient({
                 : "Upload, record, or paste a YouTube link to build your next study pack."}
             </p>
             <div className="flex flex-wrap gap-2 pt-1">
+              {dueCount > 0 ? (
+                <Button size="lg" onClick={() => void openDueReview()}>
+                  <BookOpen className="h-4 w-4" />
+                  Review {dueCount} due
+                </Button>
+              ) : null}
               {primaryCta ? (
                 <>
-                  <Button asChild size="lg">
-                    <Link href={primaryCta.href}>
-                      {primaryCta.label}
-                      <ArrowRight className="h-4 w-4" />
-                    </Link>
-                  </Button>
+                  {dueCount === 0 ? (
+                    <Button asChild size="lg">
+                      <Link href={primaryCta.href}>
+                        {primaryCta.label}
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                  ) : (
+                    <Button asChild variant="outline" size="lg">
+                      <Link href={primaryCta.href}>{primaryCta.label}</Link>
+                    </Button>
+                  )}
                   <Button asChild variant="outline" size="lg">
                     <Link href={primaryCta.secondaryHref}>
                       {primaryCta.secondary}
                     </Link>
                   </Button>
                 </>
-              ) : (
+              ) : dueCount === 0 ? (
                 <Button size="lg" onClick={() => openNew()}>
+                  <Plus className="h-4 w-4" />
+                  New study
+                </Button>
+              ) : (
+                <Button size="lg" variant="outline" onClick={() => openNew()}>
                   <Plus className="h-4 w-4" />
                   New study
                 </Button>
@@ -273,7 +315,7 @@ export function DashboardClient({
             <dl className="grid grid-cols-3 gap-x-8 gap-y-4">
               {[
                 { label: "Studies", value: stats.total },
-                { label: "Due", value: dueToday },
+                { label: "Due", value: dueCount },
                 { label: "Ready", value: stats.complete },
               ].map((item) => (
                 <div key={item.label}>
@@ -289,6 +331,47 @@ export function DashboardClient({
           ) : null}
         </div>
       </section>
+
+      <AnimatePresence>
+        {reviewOpen ? (
+          <motion.section
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.3 }}
+            className="mt-8 border border-primary/30 bg-card/60 p-5 sm:p-6"
+          >
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="font-display text-xl font-semibold tracking-tight">
+                  Due today
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Quick spaced recall without leaving your library.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setReviewOpen(false)}
+              >
+                <X className="h-4 w-4" />
+                Close
+              </Button>
+            </div>
+            {dueLoading ? (
+              <p className="text-sm text-muted-foreground">Loading cards…</p>
+            ) : (
+              <FlashcardsPanel
+                flashcards={dueCards}
+                compact
+                onRated={() => setDueCount((c) => Math.max(0, c - 1))}
+              />
+            )}
+          </motion.section>
+        ) : null}
+      </AnimatePresence>
 
       <section className="mt-10">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
@@ -411,16 +494,12 @@ export function DashboardClient({
                       href={`/study/${study.id}`}
                       className="flex items-center justify-between gap-4 border border-border/70 bg-card/40 px-4 py-3 transition-colors hover:border-primary/35"
                     >
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <p className="truncate font-medium">{study.title}</p>
-                        <div className="mt-2 h-1 w-40 max-w-full overflow-hidden bg-muted sm:w-56">
-                          <div
-                            className="h-full bg-primary"
-                            style={{
-                              width: `${Math.min(100, study.processing_progress)}%`,
-                            }}
-                          />
-                        </div>
+                        <ProcessingBar
+                          value={study.processing_progress}
+                          className="mt-2 w-40 max-w-full sm:w-56"
+                        />
                       </div>
                       <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
                         {study.processing_progress}%

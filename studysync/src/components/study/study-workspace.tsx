@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Link2,
   Link2Off,
@@ -13,7 +13,7 @@ import {
   RotateCcw,
   Trash2,
 } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { NotesPanel } from "@/components/study/notes-panel";
@@ -27,6 +27,8 @@ import { useStudySessionStore } from "@/stores/study-session";
 import { resolveStudyFilePaths } from "@/lib/studies/files";
 import type { ApiResponse } from "@/types/api";
 import type { Study, StudyWithMaterials } from "@/types/database";
+
+const EASE = [0.22, 1, 0.36, 1] as const;
 
 type StudyTab =
   | "notes"
@@ -272,25 +274,36 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
           <TabsTrigger value="chat">Chat</TabsTrigger>
           <TabsTrigger value="podcast">Podcast</TabsTrigger>
         </TabsList>
-        <TabsContent value="notes">
-          <NotesPanel note={study.notes} />
-        </TabsContent>
-        <TabsContent value="flashcards">
-          <FlashcardsPanel flashcards={study.flashcards} />
-        </TabsContent>
-        <TabsContent value="quiz">
-          <QuizPanel studyId={study.id} quizzes={study.quizzes} />
-        </TabsContent>
-        <TabsContent value="mindmap">
-          <MindMapPanel mindMap={study.notes?.mind_map ?? null} />
-        </TabsContent>
-        <TabsContent value="chat">
-          <ChatPanel studyId={study.id} />
-        </TabsContent>
-        <TabsContent value="podcast">
-          <PodcastPanel studyId={study.id} title={study.title} />
-        </TabsContent>
       </Tabs>
+
+      <div className="relative mt-6 min-h-[12rem]">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.28, ease: EASE }}
+          >
+            {activeTab === "notes" ? (
+              <NotesPanel note={study.notes} />
+            ) : null}
+            {activeTab === "flashcards" ? (
+              <FlashcardsPanel flashcards={study.flashcards} />
+            ) : null}
+            {activeTab === "quiz" ? (
+              <QuizPanel studyId={study.id} quizzes={study.quizzes} />
+            ) : null}
+            {activeTab === "mindmap" ? (
+              <MindMapPanel mindMap={study.notes?.mind_map ?? null} />
+            ) : null}
+            {activeTab === "chat" ? <ChatPanel studyId={study.id} /> : null}
+            {activeTab === "podcast" ? (
+              <PodcastPanel studyId={study.id} title={study.title} />
+            ) : null}
+          </motion.div>
+        </AnimatePresence>
+      </div>
     </motion.div>
   );
 }

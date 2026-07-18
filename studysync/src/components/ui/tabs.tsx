@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import * as TabsPrimitive from "@radix-ui/react-tabs";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils/cn";
 
 const Tabs = TabsPrimitive.Root;
@@ -24,18 +25,29 @@ TabsList.displayName = TabsPrimitive.List.displayName;
 const TabsTrigger = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
->(({ className, ...props }, ref) => (
+>(({ className, children, ...props }, ref) => (
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "inline-flex flex-1 items-center justify-center whitespace-nowrap border-b-2 border-transparent px-3 py-2.5 text-sm font-medium transition-colors",
+      "group relative inline-flex flex-1 items-center justify-center whitespace-nowrap px-3 py-2.5 text-sm font-medium transition-colors",
       "hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
       "disabled:pointer-events-none disabled:opacity-50",
-      "data-[state=active]:border-primary data-[state=active]:text-foreground",
+      "data-[state=active]:text-foreground",
       className
     )}
     {...props}
-  />
+  >
+    <span className="relative z-10">{children}</span>
+    <span className="pointer-events-none absolute inset-x-2 bottom-0 h-0.5">
+      <span className="hidden h-full w-full group-data-[state=active]:block">
+        <motion.span
+          layoutId="study-tab-underline"
+          className="block h-full w-full bg-primary"
+          transition={{ type: "spring", stiffness: 420, damping: 32 }}
+        />
+      </span>
+    </span>
+  </TabsPrimitive.Trigger>
 ));
 TabsTrigger.displayName = TabsPrimitive.Trigger.displayName;
 

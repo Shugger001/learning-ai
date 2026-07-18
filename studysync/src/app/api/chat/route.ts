@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { chatMessageSchema } from "@/lib/validations/study";
-import { chatAboutStudy } from "@/lib/ai/generate";
+import { streamChatAboutStudy } from "@/lib/ai/generate";
 import { FREE_LIMITS, ensureUsagePeriod, isPro } from "@/lib/billing/limits";
 
 export async function GET(request: Request) {
@@ -39,6 +39,9 @@ export async function POST(request: Request) {
   }
 
   const { study_id, message } = parsed.data;
+  const wantsStream =
+    request.headers.get("accept")?.includes("text/event-stream") ||
+    new URL(request.url).searchParams.get("stream") === "1";
 
   const { data: study } = await supabase
     .from("studies")
@@ -104,36 +107,104 @@ export async function POST(request: Request) {
     .filter(Boolean)
     .join("\n\n");
 
-  const answer = await chatAboutStudy({
-    question: message,
-    context,
-    history: (history ?? [])
-      .filter((h) => h.role === "user" || h.role === "assistant")
-      .map((h) => ({
-        role: h.role as "user" | "assistant",
-        content: h.content,
-      })),
-  });
+  const historyMsgs = (history ?? [])
+    .filter((h) => h.role === "user" || h.role === "assistant")
+    .map((h) => ({
+      role: h.role as "user" | "assistant",
+      content: h.content,
+    }));
 
-  const { data: assistantMsg, error } = await supabase
-    .from("chat_messages")
-    .insert({
-      study_id,
-      user_id: user.id,
-      role: "assistant",
-      content: answer,
-    })
-    .select("*")
-    .single();
+  if (!wantsStream) {
+    let answer = "";
+    for await (const chunk of streamChatAboutStudy({
+      question: message,
+      context,
+      history: historyMsgs,
+    })) {
+      answer += chunk;
+    }
 
-  if (error) return apiError(error.message, 500);
+    const { data: assistantMsg, error } = await supabase
+      .from("chat_messages")
+      .insert({
+        study_id,
+        user_id: user.id,
+        role: "assistant",
+        content: answer || "I couldn't generate an answer.",
+      })
+      .select("*")
+      .single();
 
-  if (profile) {
-    await admin
-      .from("profiles")
-      .update({ chat_used: (profile.chat_used ?? 0) + 1 })
-      .eq("user_id", user.id);
+    if (error) return apiError(error.message, 500);
+
+    if (profile) {
+      await admin
+        .from("profiles")
+        .update({ chat_used: (profile.chat_used ?? 0) + 1 })
+        .eq("user_id", user.id);
+    }
+
+    return apiSuccess(assistantMsg);
   }
 
-  return apiSuccess(assistantMsg);
+  const encoder = new TextEncoder();
+  let full = "";
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        for await (const chunk of streamChatAboutStudy({
+          question: message,
+          context,
+          history: historyMsgs,
+        })) {
+          full += chunk;
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ token: chunk })}\n\n`)
+          );
+        }
+
+        const { data: assistantMsg, error } = await supabase
+          .from("chat_messages")
+          .insert({
+            study_id,
+            user_id: user.id,
+            role: "assistant",
+            content: full || "I couldn't generate an answer.",
+          })
+          .select("*")
+          .single();
+
+        if (error) throw new Error(error.message);
+
+        if (profile) {
+          await admin
+            .from("profiles")
+            .update({ chat_used: (profile.chat_used ?? 0) + 1 })
+            .eq("user_id", user.id);
+        }
+
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({ done: true, message: assistantMsg })}\n\n`
+          )
+        );
+        controller.close();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Chat failed";
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify({ error: msg })}\n\n`)
+        );
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+    },
+  });
 }

@@ -434,14 +434,32 @@ export async function chatAboutStudy(params: {
   context: string;
   history: { role: "user" | "assistant"; content: string }[];
 }) {
+  let full = "";
+  for await (const chunk of streamChatAboutStudy(params)) {
+    full += chunk;
+  }
+  return full || "I couldn't generate an answer.";
+}
+
+export async function* streamChatAboutStudy(params: {
+  question: string;
+  context: string;
+  history: { role: "user" | "assistant"; content: string }[];
+}): AsyncGenerator<string> {
   if (!process.env.OPENAI_API_KEY) {
-    return `Based on your materials: ${params.context.slice(0, 280)}… (Add OPENAI_API_KEY for full chat answers.)`;
+    const mock = `Based on your materials: ${params.context.slice(0, 280)}… (Add OPENAI_API_KEY for full chat answers.)`;
+    for (let i = 0; i < mock.length; i += 12) {
+      yield mock.slice(i, i + 12);
+      await new Promise((r) => setTimeout(r, 18));
+    }
+    return;
   }
 
   const openai = getOpenAI();
-  const completion = await openai.chat.completions.create({
+  const stream = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     temperature: 0.3,
+    stream: true,
     messages: [
       {
         role: "system",
@@ -452,8 +470,8 @@ export async function chatAboutStudy(params: {
     ],
   });
 
-  return (
-    completion.choices[0]?.message?.content?.trim() ||
-    "I couldn't generate an answer."
-  );
+  for await (const part of stream) {
+    const text = part.choices[0]?.delta?.content;
+    if (text) yield text;
+  }
 }

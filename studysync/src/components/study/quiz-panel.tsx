@@ -2,12 +2,34 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ProcessingBar } from "@/components/ui/processing-bar";
 import type { ApiResponse } from "@/types/api";
 import type { Quiz, QuizAttempt } from "@/types/database";
+
+const EASE = [0.22, 1, 0.36, 1] as const;
+
+function CountUp({ value }: { value: number }) {
+  const [display, setDisplay] = useState(0);
+  useEffect(() => {
+    let frame = 0;
+    const start = performance.now();
+    const duration = 700;
+    function tick(now: number) {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setDisplay(Math.round(value * eased));
+      if (t < 1) frame = requestAnimationFrame(tick);
+    }
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [value]);
+  return <>{display}</>;
+}
 
 interface QuizPanelProps {
   studyId: string;
@@ -166,11 +188,16 @@ export function QuizPanel({
     const wrongQuizzes = quizzes.filter((q) => results[q.id] === false);
 
     return (
-      <div className="mx-auto max-w-2xl space-y-6">
+      <motion.div
+        className="mx-auto max-w-2xl space-y-6"
+        initial={{ opacity: 0, scale: 0.96 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.4, ease: EASE }}
+      >
         <div className="space-y-2">
           <p className="text-sm text-muted-foreground">Session complete</p>
           <h2 className="font-display text-3xl font-semibold tracking-tight">
-            {pct}%
+            <CountUp value={pct} />%
           </h2>
           <p className="text-sm text-muted-foreground">
             {correct} of {total} correct
@@ -216,7 +243,7 @@ export function QuizPanel({
             </Button>
           ) : null}
         </div>
-      </div>
+      </motion.div>
     );
   }
 
@@ -246,99 +273,116 @@ export function QuizPanel({
         </span>
       </div>
 
-      <div className="h-1.5 w-full overflow-hidden bg-muted">
-        <div
-          className="h-full bg-primary transition-all duration-300"
-          style={{ width: `${progress}%` }}
-        />
-      </div>
+      <ProcessingBar value={progress} shimmer={false} className="h-1.5" />
 
-      <h2 className="font-display text-xl font-semibold leading-snug tracking-tight sm:text-2xl">
-        {quiz.question}
-      </h2>
-
-      {type === "mcq" ? (
-        <ul className="space-y-2" role="listbox" aria-label="Answer choices">
-          {options.map((option) => {
-            const chosen = selected === option;
-            const showCorrect = answered && option === quiz.correct_answer;
-            const showWrong = answered && chosen && !isCorrect;
-            return (
-              <li key={option}>
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={chosen}
-                  disabled={answered}
-                  onClick={() => {
-                    setSelected(option);
-                    recordAnswer(
-                      option.trim().toLowerCase() ===
-                        quiz.correct_answer.trim().toLowerCase()
-                    );
-                  }}
-                  className={cn(
-                    "w-full border px-4 py-3 text-left text-sm transition-colors",
-                    !answered && "hover:bg-accent",
-                    showCorrect &&
-                      "border-success bg-success/15 font-medium text-foreground",
-                    showWrong &&
-                      "border-destructive bg-destructive/15 text-foreground"
-                  )}
-                >
-                  {option}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      ) : (
-        <div className="flex gap-2">
-          <Input
-            value={typed}
-            onChange={(e) => setTyped(e.target.value)}
-            disabled={answered}
-            placeholder={
-              type === "fill_blank" ? "Type the missing word…" : "Your answer…"
-            }
-            onKeyDown={(e) => {
-              if (e.key === "Enter") submitTyped();
-            }}
-          />
-          <Button type="button" onClick={submitTyped} disabled={answered}>
-            Check
-          </Button>
-        </div>
-      )}
-
-      {answered ? (
-        <div
-          className={cn(
-            "border px-4 py-3 text-sm",
-            isCorrect
-              ? "border-success/50 bg-success/10"
-              : "border-destructive/50 bg-destructive/10"
-          )}
-          role="status"
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={quiz.id}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.25, ease: EASE }}
+          className="space-y-6"
         >
-          <p
-            className={cn(
-              "font-semibold",
-              isCorrect ? "text-success" : "text-destructive"
-            )}
-          >
-            {isCorrect ? "Correct" : "Not quite"}
-          </p>
-          {!isCorrect ? (
-            <p className="mt-1 text-muted-foreground">
-              Model answer: {quiz.correct_answer}
-            </p>
+          <h2 className="font-display text-xl font-semibold leading-snug tracking-tight sm:text-2xl">
+            {quiz.question}
+          </h2>
+
+          {type === "mcq" ? (
+            <ul className="space-y-2" role="listbox" aria-label="Answer choices">
+              {options.map((option) => {
+                const chosen = selected === option;
+                const showCorrect = answered && option === quiz.correct_answer;
+                const showWrong = answered && chosen && !isCorrect;
+                return (
+                  <li key={option}>
+                    <motion.button
+                      type="button"
+                      role="option"
+                      aria-selected={chosen}
+                      disabled={answered}
+                      onClick={() => {
+                        setSelected(option);
+                        recordAnswer(
+                          option.trim().toLowerCase() ===
+                            quiz.correct_answer.trim().toLowerCase()
+                        );
+                      }}
+                      animate={
+                        showCorrect
+                          ? { scale: [1, 1.02, 1], borderColor: "hsl(var(--success))" }
+                          : showWrong
+                            ? { scale: [1, 0.98, 1] }
+                            : { scale: 1 }
+                      }
+                      transition={{ duration: 0.35, ease: EASE }}
+                      className={cn(
+                        "w-full border px-4 py-3 text-left text-sm transition-colors",
+                        !answered && "hover:bg-accent",
+                        showCorrect &&
+                          "border-success bg-success/15 font-medium text-foreground",
+                        showWrong &&
+                          "border-destructive bg-destructive/15 text-foreground"
+                      )}
+                    >
+                      {option}
+                    </motion.button>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <div className="flex gap-2">
+              <Input
+                value={typed}
+                onChange={(e) => setTyped(e.target.value)}
+                disabled={answered}
+                placeholder={
+                  type === "fill_blank" ? "Type the missing word…" : "Your answer…"
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") submitTyped();
+                }}
+              />
+              <Button type="button" onClick={submitTyped} disabled={answered}>
+                Check
+              </Button>
+            </div>
+          )}
+
+          {answered ? (
+            <motion.div
+              initial={{ opacity: 0, y: 6, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.3, ease: EASE }}
+              className={cn(
+                "border px-4 py-3 text-sm",
+                isCorrect
+                  ? "border-success/50 bg-success/10"
+                  : "border-destructive/50 bg-destructive/10"
+              )}
+              role="status"
+            >
+              <p
+                className={cn(
+                  "font-semibold",
+                  isCorrect ? "text-success" : "text-destructive"
+                )}
+              >
+                {isCorrect ? "Correct" : "Not quite"}
+              </p>
+              {!isCorrect ? (
+                <p className="mt-1 text-muted-foreground">
+                  Model answer: {quiz.correct_answer}
+                </p>
+              ) : null}
+              {quiz.explanation ? (
+                <p className="mt-1 text-muted-foreground">{quiz.explanation}</p>
+              ) : null}
+            </motion.div>
           ) : null}
-          {quiz.explanation ? (
-            <p className="mt-1 text-muted-foreground">{quiz.explanation}</p>
-          ) : null}
-        </div>
-      ) : null}
+        </motion.div>
+      </AnimatePresence>
 
       {error ? (
         <p className="text-sm text-destructive" role="alert">
