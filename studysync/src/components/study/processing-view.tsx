@@ -37,12 +37,10 @@ export function ProcessingView({ study }: ProcessingViewProps) {
       )
       .subscribe();
 
-    // Fallback poll in case Realtime is not enabled yet
     const interval = setInterval(() => {
       router.refresh();
     }, 4000);
 
-    // Ensure processing was kicked off
     void fetch("/api/process-file", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -55,15 +53,18 @@ export function ProcessingView({ study }: ProcessingViewProps) {
     };
   }, [study.id, router]);
 
-  const etaMinutes = Math.max(1, Math.ceil((100 - study.processing_progress) / 25));
+  const etaMinutes = Math.max(
+    1,
+    Math.ceil((100 - study.processing_progress) / 25)
+  );
 
   return (
-    <div className="mx-auto max-w-xl space-y-8 py-16 text-center">
-      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-muted">
-        <Loader2 className="h-6 w-6 animate-spin" aria-hidden />
+    <div className="mx-auto max-w-xl space-y-10 py-20 text-center">
+      <div className="mx-auto flex h-14 w-14 items-center justify-center border border-border bg-muted/40">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" aria-hidden />
       </div>
-      <div className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight">
+      <div className="space-y-3">
+        <h1 className="font-display text-3xl font-semibold tracking-tight">
           Generating your study pack
         </h1>
         <p className="text-muted-foreground">
@@ -76,9 +77,12 @@ export function ProcessingView({ study }: ProcessingViewProps) {
           <span>Progress</span>
           <span aria-live="polite">{study.processing_progress}%</span>
         </div>
-        <Progress value={study.processing_progress} aria-label="Processing progress" />
+        <Progress
+          value={study.processing_progress}
+          aria-label="Processing progress"
+        />
       </div>
-      <div className="space-y-3 pt-4" aria-hidden>
+      <div className="space-y-3 pt-2" aria-hidden>
         <Skeleton className="h-4 w-full" />
         <Skeleton className="h-4 w-5/6" />
         <Skeleton className="h-4 w-4/6" />

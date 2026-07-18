@@ -27,25 +27,34 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
 
   if (study.status === "error") {
     return (
-      <div className="mx-auto max-w-lg space-y-3 py-16 text-center">
+      <div className="mx-auto max-w-lg space-y-4 py-20 text-center">
         <Badge variant="destructive">Error</Badge>
-        <h1 className="text-2xl font-semibold">Processing failed</h1>
+        <h1 className="font-display text-3xl font-semibold tracking-tight">
+          Processing failed
+        </h1>
         <p className="text-muted-foreground">
-          {study.error_message || "Something went wrong while generating materials."}
+          {study.error_message ||
+            "Something went wrong while generating materials."}
         </p>
       </div>
     );
   }
 
+  const kindLabel =
+    study.content_type === "pdf" && /\.pptx?$/i.test(study.file_url ?? "")
+      ? "PPTX"
+      : study.content_type;
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
+      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+      className="space-y-8"
     >
-      <div className="space-y-1">
+      <div className="space-y-3 border-b border-border/60 pb-6">
         <Badge variant="secondary" className="capitalize">
-          {study.content_type}
+          {kindLabel}
         </Badge>
         <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
           {study.title}
@@ -58,7 +67,7 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
           setActiveTab(v as "notes" | "flashcards" | "quiz" | "mindmap")
         }
       >
-        <TabsList className="grid w-full grid-cols-4" aria-label="Study materials">
+        <TabsList aria-label="Study materials">
           <TabsTrigger value="notes">Notes</TabsTrigger>
           <TabsTrigger value="flashcards">Flashcards</TabsTrigger>
           <TabsTrigger value="quiz">Quiz</TabsTrigger>

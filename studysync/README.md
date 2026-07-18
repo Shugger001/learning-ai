@@ -1,8 +1,10 @@
 # StudySync
 
-Turn lectures (video, PDF, audio, text) into notes, flashcards, quizzes, and mind maps.
+Turn lectures (video, PDF, PowerPoint, audio, text) into notes, flashcards, quizzes, and mind maps.
 
 **Stack:** Next.js 14 · TypeScript · Tailwind · Supabase · OpenAI · Zustand · TanStack Query · Framer Motion
+
+**Live:** https://learning-ai-two-tau.vercel.app
 
 ---
 
@@ -23,16 +25,21 @@ SUPABASE_SERVICE_ROLE_KEY=...
 OPENAI_API_KEY=sk-...
 ```
 
-### Apply database migration
+### Apply database migrations
 
-Paste and run `supabase/migrations/20260718140000_init_studysync.sql` in the Supabase SQL Editor  
-(or `npx supabase db push` after linking).
+1. First-time: paste `supabase/migrations/20260718140000_init_studysync.sql` in the Supabase SQL Editor.
+2. Then run `supabase/migrations/RUN_PENDING.sql` (quiz count + PowerPoint storage).
 
 ### Auth providers
 
 Supabase → Authentication → Providers: enable **Email**, **Google**, and/or **GitHub**.
 
-Redirect URL: `http://localhost:3000/auth/callback`
+**Redirect URLs** (add both):
+
+- `http://localhost:3000/auth/callback`
+- `https://learning-ai-two-tau.vercel.app/auth/callback`
+
+Site URL (production): `https://learning-ai-two-tau.vercel.app`
 
 ### Run
 
@@ -50,15 +57,14 @@ Open [http://localhost:3000](http://localhost:3000).
 
 | Area | Status |
 |------|--------|
-| Landing + dark/light theme | ✅ |
+| Premium landing + light/dark theme | ✅ |
 | Email + Google/GitHub OAuth | ✅ |
 | Dashboard + New Study modal (3 steps) | ✅ |
-| Upload to Supabase Storage + credit debit (1/upload) | ✅ |
-| `/api/process-file` (PDF parse, Whisper, GPT materials) | ✅ |
-| Realtime/poll processing progress | ✅ |
+| PDF / PPTX / video / audio / text upload | ✅ |
+| Quiz + flashcard count pickers | ✅ |
+| `/api/process-file` (extract + generate) | ✅ |
 | Study page: Notes / Flashcards / Quiz / Mind Map | ✅ |
 | Edit + save flashcards & notes | ✅ |
-| Credits counter in nav (Stripe later) | ✅ |
 
 ---
 
@@ -70,4 +76,3 @@ Open [http://localhost:3000](http://localhost:3000).
 - `/study/[id]` — study workspace
 - `POST /api/studies` — create study (multipart)
 - `POST /api/process-file` — extract + generate
-- `GET/POST /api/credits` — balance / demo top-up (dev only)
