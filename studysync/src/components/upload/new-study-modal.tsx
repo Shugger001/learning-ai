@@ -48,7 +48,12 @@ const CONTENT_TYPES: {
     type: "pdf",
     label: "PDF",
     icon: FileText,
-    accept: { "application/pdf": [".pdf"] },
+    // Some browsers report PDFs as octet-stream or empty MIME — accept by extension too.
+    accept: {
+      "application/pdf": [".pdf"],
+      "application/x-pdf": [".pdf"],
+      "application/octet-stream": [".pdf"],
+    },
   },
   {
     type: "audio",
@@ -81,20 +86,42 @@ export function NewStudyModal({ open, onOpenChange }: NewStudyModalProps) {
     return match?.accept ?? {};
   }, [contentType]);
 
-  const onDrop = useCallback((accepted: File[]) => {
-    const next = accepted[0];
-    if (!next) return;
-    setFile(next);
-    if (!title) {
-      setTitle(next.name.replace(/\.[^.]+$/, ""));
-    }
-  }, [title]);
+  const onDrop = useCallback(
+    (accepted: File[], rejected: { file: File; errors: readonly { code: string; message: string }[] }[]) => {
+      setError(null);
+      const next = accepted[0];
+      if (next) {
+        setFile(next);
+        if (!title) {
+          setTitle(next.name.replace(/\.[^.]+$/, ""));
+        }
+        return;
+      }
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+      const rejection = rejected[0];
+      if (rejection) {
+        const name = rejection.file.name;
+        setError(
+          `Could not load “${name}”. Use a PDF under 50 MB (or the matching type for video/audio).`
+        );
+      }
+    },
+    [title]
+  );
+
+  const {
+    getRootProps,
+    getInputProps,
+    isDragActive,
+    open: openFilePicker,
+  } = useDropzone({
     onDrop,
     multiple: false,
     accept: Object.keys(accept).length ? accept : undefined,
     disabled: contentType === "text",
+    maxSize: 50 * 1024 * 1024,
+    noClick: true,
+    noKeyboard: true,
   });
 
   function reset() {
@@ -209,6 +236,15 @@ export function NewStudyModal({ open, onOpenChange }: NewStudyModalProps) {
             ) : (
               <div
                 {...getRootProps()}
+                role="button"
+                tabIndex={0}
+                onClick={() => openFilePicker()}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    openFilePicker();
+                  }
+                }}
                 className={cn(
                   "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-10 text-center transition-colors",
                   isDragActive ? "border-foreground bg-accent" : "hover:bg-muted/40"

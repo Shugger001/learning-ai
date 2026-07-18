@@ -14,15 +14,17 @@ export async function extractTextFromBuffer(params: {
   }
 
   if (contentType === "pdf") {
-    // pdf-parse is CommonJS; dynamic import keeps the edge/runtime happier
-    const pdfParse = (await import("pdf-parse")).default as (
-      data: Buffer
-    ) => Promise<{ text: string }>;
-    const result = await pdfParse(buffer);
-    if (!result.text?.trim()) {
-      throw new Error("Could not extract text from PDF");
+    const { PDFParse } = await import("pdf-parse");
+    const parser = new PDFParse({ data: new Uint8Array(buffer) });
+    try {
+      const result = await parser.getText();
+      if (!result.text?.trim()) {
+        throw new Error("Could not extract text from PDF");
+      }
+      return result.text;
+    } finally {
+      await parser.destroy().catch(() => undefined);
     }
-    return result.text;
   }
 
   if (contentType === "audio" || contentType === "video") {

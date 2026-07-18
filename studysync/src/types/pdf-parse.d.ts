@@ -1,10 +1,16 @@
 declare module "pdf-parse" {
-  interface PdfData {
-    text: string;
-    numpages: number;
-    info: Record<string, unknown>;
+  interface LoadParameters {
+    data?: Buffer | Uint8Array | ArrayBuffer;
+    url?: string;
   }
 
-  function pdfParse(data: Buffer): Promise<PdfData>;
-  export default pdfParse;
+  interface TextResult {
+    text: string;
+  }
+
+  export class PDFParse {
+    constructor(options: LoadParameters);
+    getText(): Promise<TextResult>;
+    destroy(): Promise<void>;
+  }
 }
