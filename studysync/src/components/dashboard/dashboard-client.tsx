@@ -256,18 +256,21 @@ export function DashboardClient({
 
   return (
     <>
-      <section className="relative overflow-hidden border border-border/70 bg-card/40">
+      <section className="relative overflow-hidden border border-border/80 bg-card/60">
         <div
-          className="pointer-events-none absolute inset-0 opacity-80"
+          className="pointer-events-none absolute inset-0"
           aria-hidden
           style={{
             background:
-              "radial-gradient(ellipse 80% 120% at 100% 0%, hsl(var(--primary) / 0.12), transparent 55%), radial-gradient(ellipse 60% 80% at 0% 100%, hsl(210 40% 50% / 0.06), transparent 50%)",
+              "linear-gradient(135deg, hsl(158 40% 22% / 0.08) 0%, transparent 45%), radial-gradient(ellipse 70% 90% at 100% 0%, hsl(38 92% 52% / 0.12), transparent 55%)",
           }}
         />
         <div className="relative flex flex-col gap-8 px-6 py-8 sm:px-8 sm:py-10 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-xl space-y-4">
-            <p className="text-sm font-medium text-primary">Library</p>
+            <div className="signal-bar" aria-hidden />
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+              Library
+            </p>
             <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
               {firstName ? `Welcome back, ${firstName}` : "Your studies"}
             </h1>

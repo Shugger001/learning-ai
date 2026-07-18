@@ -31,8 +31,8 @@ export function Navbar({ userEmail, userName }: NavbarProps) {
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border/50 bg-background/75 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+    <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur-md">
+      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
         <Link
           href="/dashboard"
           className="font-display text-lg font-semibold tracking-tight"
@@ -41,17 +41,27 @@ export function Navbar({ userEmail, userName }: NavbarProps) {
           StudySync
         </Link>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <Button asChild size="sm" className="shrink-0">
             <Link href="/dashboard?new=1">
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">New study</span>
             </Link>
           </Button>
-          <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            className="hidden sm:inline-flex"
+          >
             <Link href="/library">Library</Link>
           </Button>
-          <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            className="hidden sm:inline-flex"
+          >
             <Link href="/pricing">Pricing</Link>
           </Button>
           <ThemeToggle />

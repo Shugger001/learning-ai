@@ -1,18 +1,18 @@
 import type { Metadata } from "next";
-import { Figtree, Syne } from "next/font/google";
+import { Bricolage_Grotesque, Manrope } from "next/font/google";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
 import "./globals.css";
 
-const figtree = Figtree({
+const manrope = Manrope({
   subsets: ["latin"],
-  variable: "--font-figtree",
+  variable: "--font-manrope",
   display: "swap",
 });
 
-const syne = Syne({
+const bricolage = Bricolage_Grotesque({
   subsets: ["latin"],
-  variable: "--font-syne",
+  variable: "--font-bricolage",
   display: "swap",
 });
 
@@ -30,7 +30,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${figtree.variable} ${syne.variable} font-sans antialiased`}
+        className={`${manrope.variable} ${bricolage.variable} font-sans antialiased`}
       >
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <QueryProvider>{children}</QueryProvider>

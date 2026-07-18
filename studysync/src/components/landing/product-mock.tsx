@@ -58,22 +58,18 @@ export function LandingProductMock() {
   }, []);
 
   return (
-    <div className="border border-white/15 bg-white/[0.04] p-5 backdrop-blur-sm sm:p-7">
-      <div className="mb-5 flex gap-2 text-xs font-medium tracking-wide text-white/50">
+    <div className="border border-white/15 bg-white/[0.05] p-5 sm:p-7">
+      <div className="mb-5 flex gap-3 text-xs font-semibold tracking-wide text-white/45">
         {tabs.map((tab, i) => (
           <span
             key={tab}
-            className={
-              i === tabIdx
-                ? "relative pb-1 text-white"
-                : "relative pb-1"
-            }
+            className={i === tabIdx ? "relative pb-1 text-white" : "relative pb-1"}
           >
             {tab}
             {i === tabIdx ? (
               <motion.span
                 layoutId="landing-mock-tab"
-                className="absolute inset-x-0 -bottom-px h-px bg-[hsl(174_45%_55%)]"
+                className="absolute inset-x-0 -bottom-px h-0.5 bg-signal"
                 transition={{ type: "spring", stiffness: 380, damping: 30 }}
               />
             ) : null}
@@ -88,7 +84,7 @@ export function LandingProductMock() {
         aria-label="Demo flashcard"
       >
         <motion.div
-          className="relative flex min-h-[11rem] flex-col items-center justify-center border border-white/20 bg-[hsl(222_40%_10%)] px-6 py-10 text-center shadow-[0_24px_60px_-20px_rgba(0,0,0,0.55)] [transform-style:preserve-3d]"
+          className="relative flex min-h-[11rem] flex-col items-center justify-center border border-white/15 bg-[hsl(158_35%_9%)] px-6 py-10 text-center [transform-style:preserve-3d]"
           animate={{ rotateY: flipped ? 180 : 0 }}
           transition={{ duration: 0.55, ease: EASE }}
         >
@@ -96,11 +92,13 @@ export function LandingProductMock() {
             className="absolute inset-0 flex flex-col items-center justify-center px-6 py-10"
             style={{ backfaceVisibility: "hidden" }}
           >
-            <p className="text-xs uppercase tracking-wider text-white/40">Front</p>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-white/40">
+              Front
+            </p>
             <p className="font-display mt-3 text-lg font-semibold leading-snug tracking-tight sm:text-xl">
               {DEMO.front}
             </p>
-            <p className="mt-6 text-xs text-white/45">Tap to reveal</p>
+            <p className="mt-6 text-xs text-white/40">Tap to reveal</p>
           </div>
           <div
             className="absolute inset-0 flex flex-col items-center justify-center px-6 py-10"
@@ -109,7 +107,9 @@ export function LandingProductMock() {
               transform: "rotateY(180deg)",
             }}
           >
-            <p className="text-xs uppercase tracking-wider text-white/40">Back</p>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-white/40">
+              Back
+            </p>
             <p className="mt-3 text-[15px] leading-relaxed text-white/85">
               {DEMO.back}
             </p>
@@ -123,8 +123,8 @@ export function LandingProductMock() {
             key={label}
             className={
               i === rating
-                ? "relative border border-[hsl(174_45%_45%)] px-2.5 py-1 text-xs text-[hsl(174_45%_72%)]"
-                : "border border-white/15 px-2.5 py-1 text-xs text-white/45"
+                ? "relative border border-signal/60 px-2.5 py-1 text-xs text-signal"
+                : "border border-white/15 px-2.5 py-1 text-xs text-white/40"
             }
           >
             {label}
@@ -132,7 +132,7 @@ export function LandingProductMock() {
               {i === rating ? (
                 <motion.span
                   layoutId="landing-rating-underline"
-                  className="absolute inset-x-1 -bottom-px h-px bg-[hsl(174_45%_55%)]"
+                  className="absolute inset-x-1 -bottom-px h-px bg-signal"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
