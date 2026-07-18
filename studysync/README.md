@@ -4,7 +4,7 @@ Turn lectures (video, PDF, PowerPoint, audio, text) into notes, flashcards, quiz
 
 **Stack:** Next.js 14 · TypeScript · Tailwind · Supabase · OpenAI · Zustand · TanStack Query · Framer Motion
 
-**Live:** https://learning-ai-two-tau.vercel.app
+**Live:** https://studysync-alpha-opal.vercel.app
 
 ---
 
@@ -28,7 +28,7 @@ OPENAI_API_KEY=sk-...
 ### Apply database migrations
 
 1. First-time: paste `supabase/migrations/20260718140000_init_studysync.sql` in the Supabase SQL Editor.
-2. Then run `supabase/migrations/RUN_PENDING.sql` (quiz count + PowerPoint storage).
+2. Then run `supabase/migrations/RUN_PENDING.sql` (quiz count, PowerPoint storage, Turbo parity schema).
 
 ### Auth providers
 
@@ -37,9 +37,9 @@ Supabase → Authentication → Providers: enable **Email**, **Google**, and/or 
 **Redirect URLs** (add both):
 
 - `http://localhost:3000/auth/callback`
-- `https://learning-ai-two-tau.vercel.app/auth/callback`
+- `https://studysync-alpha-opal.vercel.app/auth/callback`
 
-Site URL (production): `https://learning-ai-two-tau.vercel.app`
+Site URL (production): `https://studysync-alpha-opal.vercel.app`
 
 ### Run
 

@@ -1,7 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const protectedPrefixes = ["/dashboard", "/study"];
+const protectedPrefixes = ["/dashboard", "/study", "/library", "/pricing"];
 const authRoutes = ["/login", "/signup"];
 
 export async function updateSession(request: NextRequest) {
@@ -15,6 +15,16 @@ export async function updateSession(request: NextRequest) {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
+    const pathname = request.nextUrl.pathname;
+    const isProtected = protectedPrefixes.some(
+      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+    );
+    if (isProtected) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      url.searchParams.set("next", pathname);
+      return NextResponse.redirect(url);
+    }
     return response;
   }
 

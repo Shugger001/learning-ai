@@ -7,15 +7,29 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  if (
+    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  ) {
+    redirect("/login");
+  }
+
+  let user = null;
+  try {
+    const supabase = createClient();
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser();
+    user = authUser;
+  } catch {
+    redirect("/login");
+  }
 
   if (!user) {
     redirect("/login");
   }
 
+  const supabase = createClient();
   const { data: profile } = await supabase
     .from("profiles")
     .select("full_name")
