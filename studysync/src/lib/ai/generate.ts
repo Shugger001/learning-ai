@@ -212,8 +212,6 @@ export function generateMockMaterials(params: {
     };
   });
 
-  const topic = slides[0]?.heading ?? title;
-
   const quizzes = Array.from({ length: quizCount }, (_, i) => {
     const section = slides[i % Math.max(slides.length, 1)];
     const focus = section?.heading ?? `topic ${i + 1}`;
