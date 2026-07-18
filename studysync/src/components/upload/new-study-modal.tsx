@@ -27,8 +27,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils/cn";
+import { createClient } from "@/lib/supabase/client";
 import type { ApiResponse } from "@/types/api";
 import type { ContentType, DetailLevel, Study } from "@/types/database";
+
+const MAX_FILE_BYTES = 50 * 1024 * 1024;
 
 interface NewStudyModalProps {
   open: boolean;
@@ -217,29 +220,74 @@ export function NewStudyModal({
       setError("Please upload or record a file before generating.");
       return;
     }
+    if (file && file.size > MAX_FILE_BYTES) {
+      setError("File is too large. Use a file under 50 MB.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
 
-    const formData = new FormData();
-    formData.append(
-      "meta",
-      JSON.stringify({
-        title: title || "Untitled Study",
-        content_type: contentType,
-        flashcard_count: flashcardCount,
-        quiz_count: quizCount,
-        detail_level: detailLevel,
-        text_content: contentType === "text" ? textContent : undefined,
-        source_url: contentType === "youtube" ? youtubeUrl : undefined,
-      })
-    );
-
-    if (file) formData.append("file", file);
-
     try {
+      let filePath: string | undefined;
+
+      if (file && contentType !== "text" && contentType !== "youtube") {
+        const supabase = createClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) {
+          setError("Please sign in again to upload.");
+          setSubmitting(false);
+          return;
+        }
+
+        const ext = file.name.split(".").pop() || "bin";
+        const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
+        const lower = file.name.toLowerCase();
+        let uploadContentType = file.type || "application/octet-stream";
+        if (lower.endsWith(".pptx") || lower.endsWith(".ppt")) {
+          uploadContentType =
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+        } else if (lower.endsWith(".pdf") && !uploadContentType.includes("pdf")) {
+          uploadContentType = "application/pdf";
+        }
+
+        let { error: uploadError } = await supabase.storage
+          .from("lectures")
+          .upload(path, file, {
+            contentType: uploadContentType,
+            upsert: false,
+          });
+
+        if (uploadError) {
+          const retry = await supabase.storage.from("lectures").upload(path, file, {
+            contentType: "application/octet-stream",
+            upsert: false,
+          });
+          uploadError = retry.error;
+        }
+
+        if (uploadError) {
+          setError(`Upload failed: ${uploadError.message}`);
+          setSubmitting(false);
+          return;
+        }
+        filePath = path;
+      }
+
       const res = await fetch("/api/studies", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: title || "Untitled Study",
+          content_type: contentType,
+          flashcard_count: flashcardCount,
+          quiz_count: quizCount,
+          detail_level: detailLevel,
+          text_content: contentType === "text" ? textContent : undefined,
+          source_url: contentType === "youtube" ? youtubeUrl : undefined,
+          file_path: filePath,
+        }),
       });
       const raw = await res.text();
       let json: ApiResponse<Study>;
@@ -247,9 +295,7 @@ export function NewStudyModal({
         json = JSON.parse(raw) as ApiResponse<Study>;
       } catch {
         setError(
-          res.status === 413
-            ? "File is too large. Use a file under 50 MB."
-            : `Server error (${res.status}). ${raw.slice(0, 160) || "Please try again."}`
+          `Server error (${res.status}). ${raw.slice(0, 160) || "Please try again."}`
         );
         setSubmitting(false);
         return;
@@ -486,7 +532,7 @@ export function NewStudyModal({
               {submitting ? (
                 <>
                   <Loader2 className="animate-spin" />
-                  Creating…
+                  {file ? "Uploading…" : "Creating…"}
                 </>
               ) : (
                 "Generate study materials"

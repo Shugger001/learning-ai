@@ -41,19 +41,26 @@ export async function POST(request: Request) {
     return apiError("Unauthorized", 401);
   }
 
-  const formData = await request.formData();
-  const metaRaw = formData.get("meta");
-  const file = formData.get("file");
-
-  if (typeof metaRaw !== "string") {
-    return apiError("Missing study metadata", 400);
-  }
-
+  const contentTypeHeader = request.headers.get("content-type") || "";
   let metaJson: unknown;
-  try {
-    metaJson = JSON.parse(metaRaw);
-  } catch {
-    return apiError("Invalid metadata JSON", 400);
+  let uploadedFile: File | null = null;
+
+  if (contentTypeHeader.includes("multipart/form-data")) {
+    const formData = await request.formData();
+    const metaRaw = formData.get("meta");
+    const file = formData.get("file");
+    if (typeof metaRaw !== "string") {
+      return apiError("Missing study metadata", 400);
+    }
+    try {
+      metaJson = JSON.parse(metaRaw);
+    } catch {
+      return apiError("Invalid metadata JSON", 400);
+    }
+    if (file instanceof File) uploadedFile = file;
+  } else {
+    metaJson = await request.json().catch(() => null);
+    if (!metaJson) return apiError("Invalid JSON body", 400);
   }
 
   const parsed = createStudySchema.safeParse(metaJson);
@@ -73,8 +80,12 @@ export async function POST(request: Request) {
 
   const needsFile =
     meta.content_type !== "text" && meta.content_type !== "youtube";
-  if (needsFile && !(file instanceof File)) {
+  if (needsFile && !meta.file_path && !uploadedFile) {
     return apiError("File is required", 400);
+  }
+
+  if (meta.file_path && !meta.file_path.startsWith(`${user.id}/`)) {
+    return apiError("Invalid file path", 403);
   }
 
   let admin;
@@ -104,7 +115,7 @@ export async function POST(request: Request) {
     );
   }
 
-  let fileUrl: string | null = null;
+  let fileUrl: string | null = meta.file_path ?? null;
   let transcriptText: string | null = meta.text_content?.trim() ?? null;
   const sourceUrl: string | null = meta.source_url?.trim() ?? null;
 
@@ -119,24 +130,18 @@ export async function POST(request: Request) {
     }
   }
 
-  if (file instanceof File) {
-    const ext = file.name.split(".").pop() || "bin";
+  // Legacy/small-file path: upload through the API (kept for compatibility).
+  if (!fileUrl && uploadedFile) {
+    const ext = uploadedFile.name.split(".").pop() || "bin";
     const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-    const buffer = Buffer.from(await file.arrayBuffer());
-
-    const lower = file.name.toLowerCase();
-    let uploadContentType = file.type || "application/octet-stream";
+    const buffer = Buffer.from(await uploadedFile.arrayBuffer());
+    const lower = uploadedFile.name.toLowerCase();
+    let uploadContentType = uploadedFile.type || "application/octet-stream";
     if (lower.endsWith(".pptx") || lower.endsWith(".ppt")) {
       uploadContentType =
         "application/vnd.openxmlformats-officedocument.presentationml.presentation";
     } else if (lower.endsWith(".pdf") && !uploadContentType.includes("pdf")) {
       uploadContentType = "application/pdf";
-    } else if (
-      lower.endsWith(".webm") ||
-      lower.endsWith(".ogg") ||
-      uploadContentType.startsWith("audio/")
-    ) {
-      uploadContentType = file.type || "audio/webm";
     }
 
     const { error: uploadError } = await admin.storage
@@ -147,7 +152,6 @@ export async function POST(request: Request) {
       });
 
     if (uploadError) {
-      // Retry as octet-stream when bucket MIME allowlist rejects recordings/etc.
       const retry = await admin.storage.from("lectures").upload(path, buffer, {
         contentType: "application/octet-stream",
         upsert: false,
@@ -156,8 +160,18 @@ export async function POST(request: Request) {
         return apiError(`Upload failed: ${uploadError.message}`, 500);
       }
     }
-
     fileUrl = path;
+  }
+
+  if (fileUrl) {
+    const fileName = fileUrl.split("/").pop();
+    const { data: listed, error: listError } = await admin.storage
+      .from("lectures")
+      .list(user.id, { limit: 1000 });
+    const found = listed?.some((f) => f.name === fileName);
+    if (listError || !found) {
+      return apiError("Uploaded file not found. Please try again.", 400);
+    }
   }
 
   const { data: study, error: studyError } = await admin

@@ -14,6 +14,8 @@ export const createStudySchema = z.object({
   text_content: z.string().optional(),
   source_url: z.string().url().optional(),
   folder_id: z.string().uuid().optional().nullable(),
+  /** Path in lectures bucket after client-side direct upload */
+  file_path: z.string().min(3).optional(),
 });
 
 export const updateFlashcardSchema = z.object({
