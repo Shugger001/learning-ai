@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    /* Signal Lab — cool paper, forest ink, amber signal (not teal SaaS / cream serif) */
+    /* Signal Lab - cool paper, forest ink, amber signal (not teal SaaS / cream serif) */
     --background: 195 18% 96%;
     --foreground: 160 28% 10%;
     --card: 0 0% 100%;

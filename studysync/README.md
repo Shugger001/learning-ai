@@ -73,11 +73,11 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Key routes
 
-- `/` — landing
-- `/login`, `/signup` — auth
-- `/dashboard` — studies grid + FAB
-- `/study/[id]` — study workspace
-- `/share/[token]` — public interactive share
-- `/library`, `/pricing` — premade packs + plans
-- `POST /api/studies` — create study
-- `POST /api/process-file` — extract + generate
+- `/` - landing
+- `/login`, `/signup` - auth
+- `/dashboard` - studies grid + FAB
+- `/study/[id]` - study workspace
+- `/share/[token]` - public interactive share
+- `/library`, `/pricing` - premade packs + plans
+- `POST /api/studies` - create study
+- `POST /api/process-file` - extract + generate

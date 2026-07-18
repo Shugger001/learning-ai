@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import { Check, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FREE_LIMITS } from "@/lib/billing/limits";
+import { EASE, fadeUp, staggerContainer, staggerItem } from "@/lib/motion";
 import type { ApiResponse } from "@/types/api";
 import type { PlanType } from "@/types/database";
 
@@ -41,8 +43,10 @@ export function PricingClient({ plan }: PricingClientProps) {
 
   return (
     <div className="mx-auto max-w-3xl space-y-10">
-      <div className="space-y-3 text-center">
-        <p className="text-sm font-medium text-primary">Pricing</p>
+      <motion.div className="space-y-3 text-center" {...fadeUp}>
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+          Pricing
+        </p>
         <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
           Study without limits
         </h1>
@@ -50,10 +54,20 @@ export function PricingClient({ plan }: PricingClientProps) {
           Free covers getting started. Pro unlocks unlimited uploads, chat, and
           podcasts.
         </p>
-      </div>
+      </motion.div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <article className="border border-border/70 bg-card/40 p-6">
+      <motion.div
+        className="grid gap-4 sm:grid-cols-2"
+        variants={staggerContainer}
+        initial="hidden"
+        animate="show"
+      >
+        <motion.article
+          variants={staggerItem}
+          whileHover={{ y: -4 }}
+          transition={{ type: "spring", stiffness: 400, damping: 28 }}
+          className="border border-border/70 bg-card/40 p-6"
+        >
           <h2 className="font-display text-xl font-semibold">Free</h2>
           <p className="mt-1 text-sm text-muted-foreground">For trying StudySync</p>
           <ul className="mt-6 space-y-2 text-sm">
@@ -73,11 +87,21 @@ export function PricingClient({ plan }: PricingClientProps) {
           <p className="mt-6 text-sm font-medium">
             {plan === "free" ? "Current plan" : "Included"}
           </p>
-        </article>
+        </motion.article>
 
-        <article className="border border-primary/40 bg-primary/5 p-6">
+        <motion.article
+          variants={staggerItem}
+          whileHover={{ y: -4 }}
+          transition={{ type: "spring", stiffness: 400, damping: 28 }}
+          className="border border-primary/40 bg-primary/5 p-6"
+        >
           <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
+            <motion.span
+              animate={{ rotate: [0, 12, -8, 0] }}
+              transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <Sparkles className="h-4 w-4 text-primary" />
+            </motion.span>
             <h2 className="font-display text-xl font-semibold">Pro</h2>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">Unlimited learning loop</p>
@@ -98,18 +122,28 @@ export function PricingClient({ plan }: PricingClientProps) {
           {plan === "pro" ? (
             <p className="mt-6 text-sm font-medium text-primary">You&apos;re on Pro</p>
           ) : (
-            <Button className="mt-6 w-full" onClick={() => void upgrade()} disabled={loading}>
+            <Button
+              className="mt-6 w-full"
+              onClick={() => void upgrade()}
+              disabled={loading}
+            >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               Upgrade to Pro
             </Button>
           )}
-        </article>
-      </div>
+        </motion.article>
+      </motion.div>
 
       {message ? (
-        <p className="text-center text-sm text-muted-foreground" role="status">
+        <motion.p
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: EASE }}
+          className="text-center text-sm text-muted-foreground"
+          role="status"
+        >
           {message}
-        </p>
+        </motion.p>
       ) : null}
     </div>
   );

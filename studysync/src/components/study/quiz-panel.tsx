@@ -223,7 +223,7 @@ export function QuizPanel({
             </ul>
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">Perfect run — nice work.</p>
+          <p className="text-sm text-muted-foreground">Perfect run - nice work.</p>
         )}
 
         <div className="flex flex-wrap gap-2">

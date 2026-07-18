@@ -89,7 +89,7 @@ const FILTERS: { id: LibraryFilter; label: string }[] = [
 ];
 
 const TIPS = [
-  "Review due flashcards daily — spaced recall sticks better.",
+  "Review due flashcards daily - spaced recall sticks better.",
   "Chat with a study when a concept still feels fuzzy.",
   "Generate a podcast for commute review.",
   "Browse the premade library for AP and STEM starters.",
@@ -276,7 +276,7 @@ export function DashboardClient({
             </h1>
             <p className="text-[15px] leading-relaxed text-muted-foreground">
               {dueToday > 0
-                ? `${dueToday} flashcard${dueToday === 1 ? "" : "s"} due — start with spaced recall.`
+                ? `${dueToday} flashcard${dueToday === 1 ? "" : "s"} due - start with spaced recall.`
                 : "Upload, record, or paste a YouTube link to build your next study pack."}
             </p>
             <div className="flex flex-wrap gap-2 pt-1">
@@ -332,7 +332,7 @@ export function DashboardClient({
                 {usage.chat}/{FREE_LIMITS.chat} chat · {usage.podcasts}/
                 {FREE_LIMITS.podcasts} podcasts left
                 {usage.uploads <= 2 || usage.chat <= 5 || usage.podcasts <= 1
-                  ? " — nearing limit"
+                  ? " - nearing limit"
                   : ""}
               </p>
             ) : null}
@@ -412,7 +412,7 @@ export function DashboardClient({
               Start from
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              YouTube and live recording first—other formats when you need them.
+              YouTube and live recording first-other formats when you need them.
             </p>
           </div>
           <Button

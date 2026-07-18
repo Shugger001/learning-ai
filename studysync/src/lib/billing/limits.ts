@@ -28,7 +28,7 @@ export type UsageRemaining = {
 
 /** If the 30-day window expired, zero counters and bump usage_reset_at. */
 export async function ensureUsagePeriod<T extends UsageProfile>(
-  // Supabase admin client — keep loose to avoid coupling this helper to client types.
+  // Supabase admin client - keep loose to avoid coupling this helper to client types.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   admin: { from: (table: string) => any },
   userId: string,

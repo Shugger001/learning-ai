@@ -5,11 +5,13 @@ import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
+import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { QuizPanel } from "@/components/study/quiz-panel";
 import { cn } from "@/lib/utils/cn";
+import { EASE, fadeUp } from "@/lib/motion";
 import type { Flashcard, Note, Quiz, Study } from "@/types/database";
 import "katex/dist/katex.min.css";
 
@@ -37,17 +39,26 @@ function ShareFlashcards({ cards }: { cards: Flashcard[] }) {
       <p className="text-sm text-muted-foreground">
         Card {index + 1} of {cards.length} · tap to flip
       </p>
-      <button
-        type="button"
-        onClick={() => setFlipped((v) => !v)}
-        className={cn(
-          "flex min-h-[12rem] w-full items-center justify-center border border-border/70 bg-card/50 p-8 text-center transition-colors hover:bg-accent/30"
-        )}
-      >
-        <p className="font-display text-lg font-semibold leading-snug tracking-tight sm:text-xl">
-          {flipped ? card.answer : card.question}
-        </p>
-      </button>
+      <div className="relative overflow-hidden [perspective:1200px]">
+        <AnimatePresence mode="wait">
+          <motion.button
+            key={`${card.id}-${flipped}`}
+            type="button"
+            onClick={() => setFlipped((v) => !v)}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.28, ease: EASE }}
+            className={cn(
+              "flex min-h-[12rem] w-full items-center justify-center border border-border/70 bg-card/50 p-8 text-center hover:bg-accent/30"
+            )}
+          >
+            <p className="font-display text-lg font-semibold leading-snug tracking-tight sm:text-xl">
+              {flipped ? card.answer : card.question}
+            </p>
+          </motion.button>
+        </AnimatePresence>
+      </div>
       <div className="flex justify-between">
         <Button
           type="button"
@@ -82,13 +93,20 @@ function ShareFlashcards({ cards }: { cards: Flashcard[] }) {
 
 export function ShareStudyView({ data }: { data: ShareStudyPayload }) {
   return (
-    <main className="mx-auto min-h-screen max-w-3xl px-4 py-12 sm:px-6">
-      <p className="text-sm font-medium text-primary">Shared study</p>
+    <motion.main
+      className="mx-auto min-h-screen max-w-3xl px-4 py-12 sm:px-6"
+      initial={fadeUp.initial}
+      animate={fadeUp.animate}
+      transition={fadeUp.transition}
+    >
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+        Shared study
+      </p>
       <h1 className="font-display mt-2 text-3xl font-semibold tracking-tight">
         {data.study.title}
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Flip cards and take the quiz — scores stay on this device only.
+        Flip cards and take the quiz - scores stay on this device only.
       </p>
 
       <Tabs defaultValue="notes" className="mt-8">
@@ -142,6 +160,6 @@ export function ShareStudyView({ data }: { data: ShareStudyPayload }) {
           Create a StudySync account
         </Link>
       </p>
-    </main>
+    </motion.main>
   );
 }

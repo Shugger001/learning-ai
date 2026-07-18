@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { Download, Loader2, Podcast as PodcastIcon, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { fadeUp, scaleIn } from "@/lib/motion";
 import type { ApiResponse } from "@/types/api";
 import type { Podcast } from "@/types/database";
 
@@ -43,7 +45,7 @@ export function PodcastPanel({
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <motion.div className="mx-auto max-w-2xl space-y-6" {...fadeUp}>
       <div className="space-y-2">
         <h2 className="font-display text-xl font-semibold tracking-tight">
           Study podcast
@@ -74,7 +76,10 @@ export function PodcastPanel({
       ) : null}
 
       {podcast?.status === "complete" ? (
-        <div className="space-y-5 border border-border/70 bg-card/50 p-6">
+        <motion.div
+          className="space-y-5 border border-border/70 bg-card/50 p-6"
+          {...scaleIn}
+        >
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Now playing
@@ -133,8 +138,8 @@ export function PodcastPanel({
               </pre>
             </details>
           ) : null}
-        </div>
+        </motion.div>
       ) : null}
-    </div>
+    </motion.div>
   );
 }

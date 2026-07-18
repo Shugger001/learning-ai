@@ -31,7 +31,7 @@ export async function POST() {
     return apiSuccess({
       mode: "demo",
       url: null,
-      message: "Upgraded to Pro (demo mode — set Stripe keys for real checkout).",
+      message: "Upgraded to Pro (demo mode - set Stripe keys for real checkout).",
     });
   }
 

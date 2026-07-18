@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Navbar } from "@/components/layout/navbar";
+import { PageReveal } from "@/components/layout/page-reveal";
 
 export default async function DashboardLayout({
   children,
@@ -47,7 +48,7 @@ export default async function DashboardLayout({
         }
       />
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
-        {children}
+        <PageReveal>{children}</PageReveal>
       </main>
     </div>
   );

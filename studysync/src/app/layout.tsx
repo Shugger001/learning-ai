@@ -17,7 +17,7 @@ const bricolage = Bricolage_Grotesque({
 });
 
 export const metadata: Metadata = {
-  title: "StudySync — Turn lectures into active recall",
+  title: "StudySync - Turn lectures into active recall",
   description:
     "Upload videos, PDFs, and audio. Get flashcards, quizzes, mind maps, and notes powered by AI.",
 };

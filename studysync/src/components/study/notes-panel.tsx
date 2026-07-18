@@ -6,6 +6,7 @@ import StarterKit from "@tiptap/starter-kit";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
+import { motion } from "framer-motion";
 import { Check, Copy, Download, Pencil, Save, Eye, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils/cn";
+import { fadeUp } from "@/lib/motion";
 import type { ApiResponse } from "@/types/api";
 import type { Note } from "@/types/database";
 import "katex/dist/katex.min.css";
@@ -82,7 +84,9 @@ export function NotesPanel({ note }: NotesPanelProps) {
 
   if (!note) {
     return (
-      <p className="text-sm text-muted-foreground">No notes generated yet.</p>
+      <motion.p className="text-sm text-muted-foreground" {...fadeUp}>
+        No notes generated yet.
+      </motion.p>
     );
   }
 
@@ -131,7 +135,7 @@ export function NotesPanel({ note }: NotesPanelProps) {
     content !== (note.content ?? "") || summary !== (note.summary ?? "");
 
   return (
-    <div className="space-y-6">
+    <motion.div className="space-y-6" {...fadeUp}>
       <div className="flex flex-wrap gap-2">
         <Button
           type="button"
@@ -266,7 +270,7 @@ export function NotesPanel({ note }: NotesPanelProps) {
           {message}
         </p>
       ) : null}
-    </div>
+    </motion.div>
   );
 }
 

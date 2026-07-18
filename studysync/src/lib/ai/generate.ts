@@ -139,7 +139,7 @@ Rules:
 - For fill_blank: options can be []; question should include a blank like "____"; correct_answer is the missing word/phrase.
 - For short_answer: options can be []; correct_answer is a concise model answer.
 - ${notesGuidance}
-- Notes MUST use proper markdown: # / ## headings, bullet lists, and short paragraphs — never one word per line.
+- Notes MUST use proper markdown: # / ## headings, bullet lists, and short paragraphs - never one word per line.
 - Rewrite slide fragments into coherent study prose; do not dump raw OCR/slide text.
 - Summary must be a readable paragraph (not fragmented lines).
 - Mind map should be hierarchical with 1 root and 2–3 depth levels.
@@ -338,7 +338,7 @@ Allowed quiz_type values: ${types.join(", ")}. Mix types. For mcq use 4 options.
 
 export async function generatePodcastScript(sourceText: string, title: string) {
   if (!process.env.OPENAI_API_KEY) {
-    return `Host A: Welcome to StudySync Audio — today we're reviewing ${title}.
+    return `Host A: Welcome to StudySync Audio - today we're reviewing ${title}.
 Host B: Let's start with the big ideas.
 Host A: ${normalizeSourceText(sourceText).slice(0, 500)}
 Host B: Great summary. Review your flashcards next!`;

@@ -357,7 +357,7 @@ export function NewStudyModal({
         <DialogHeader>
           <DialogTitle>New Study</DialogTitle>
           <DialogDescription id="new-study-desc">
-            Step {step} of 3 — add one or more files, then configure your study pack.
+            Step {step} of 3 - add one or more files, then configure your study pack.
           </DialogDescription>
         </DialogHeader>
 

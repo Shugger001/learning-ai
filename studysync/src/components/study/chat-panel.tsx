@@ -2,9 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import { motion } from "framer-motion";
 import { Loader2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { EASE } from "@/lib/motion";
 import type { ApiResponse } from "@/types/api";
 import type { ChatMessage } from "@/types/database";
 
@@ -145,7 +147,7 @@ export function ChatPanel({ studyId }: { studyId: string }) {
         {messages.length === 0 ? (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Ask anything about this study — concepts, definitions, or practice
+              Ask anything about this study - concepts, definitions, or practice
               explanations.
             </p>
             <div className="flex flex-wrap gap-2">
@@ -163,8 +165,11 @@ export function ChatPanel({ studyId }: { studyId: string }) {
           </div>
         ) : null}
         {messages.map((m) => (
-          <div
+          <motion.div
             key={m.id}
+            initial={{ opacity: 0, y: 10, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.28, ease: EASE }}
             className={
               m.role === "user"
                 ? "ml-8 rounded-md bg-primary/10 px-3 py-2 text-sm"
@@ -184,7 +189,7 @@ export function ChatPanel({ studyId }: { studyId: string }) {
             ) : (
               m.content
             )}
-          </div>
+          </motion.div>
         ))}
         <div ref={bottomRef} />
       </div>

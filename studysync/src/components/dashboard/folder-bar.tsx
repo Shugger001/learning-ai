@@ -8,9 +8,11 @@ import {
   Settings2,
   Trash2,
 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils/cn";
+import { EASE, staggerContainer, staggerItem } from "@/lib/motion";
 import type { ApiResponse } from "@/types/api";
 import type { Folder, Study } from "@/types/database";
 
@@ -106,9 +108,16 @@ export function FolderBar({
   return (
     <section className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap gap-2">
-          <button
+        <motion.div
+          className="flex flex-wrap gap-2"
+          variants={staggerContainer}
+          initial="hidden"
+          animate="show"
+        >
+          <motion.button
             type="button"
+            variants={staggerItem}
+            whileTap={{ scale: 0.97 }}
             onClick={() => onSelectFolder(null)}
             className={cn(
               "inline-flex items-center gap-1.5 border px-3 py-1.5 text-sm transition-colors",
@@ -118,11 +127,14 @@ export function FolderBar({
             )}
           >
             All
-          </button>
+          </motion.button>
           {folders.map((folder) => (
-            <button
+            <motion.button
               key={folder.id}
               type="button"
+              variants={staggerItem}
+              whileTap={{ scale: 0.97 }}
+              layout
               onClick={() => onSelectFolder(folder.id)}
               className={cn(
                 "inline-flex items-center gap-1.5 border px-3 py-1.5 text-sm transition-colors",
@@ -133,9 +145,9 @@ export function FolderBar({
             >
               <FolderIcon className="h-3.5 w-3.5" />
               {folder.name}
-            </button>
+            </motion.button>
           ))}
-        </div>
+        </motion.div>
         <Button
           type="button"
           variant="ghost"
@@ -148,125 +160,136 @@ export function FolderBar({
         </Button>
       </div>
 
-      {organize ? (
-        <div className="space-y-3 border border-border/70 bg-card/40 p-4">
-          <div className="flex flex-wrap gap-2">
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="New folder"
-              className="w-40 sm:w-48"
-              aria-label="New folder name"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={creating || !name.trim()}
-              onClick={() => void createFolder()}
-            >
-              <FolderPlus className="h-4 w-4" />
-              Add
-            </Button>
-          </div>
-
-          {folders.length > 0 ? (
-            <ul className="space-y-2 border-t border-border/60 pt-3">
-              {folders.map((folder) => (
-                <li
-                  key={folder.id}
-                  className="flex flex-wrap items-center gap-2"
+      <AnimatePresence initial={false}>
+        {organize ? (
+          <motion.div
+            key="organize"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.28, ease: EASE }}
+            className="overflow-hidden"
+          >
+            <div className="space-y-3 border border-border/70 bg-card/40 p-4">
+              <div className="flex flex-wrap gap-2">
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="New folder"
+                  className="w-40 sm:w-48"
+                  aria-label="New folder name"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={creating || !name.trim()}
+                  onClick={() => void createFolder()}
                 >
-                  {editingId === folder.id ? (
-                    <>
-                      <Input
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        className="h-8 w-40 sm:w-48"
-                        aria-label={`Rename ${folder.name}`}
-                      />
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        disabled={busyId === folder.id || !editName.trim()}
-                        onClick={() => void renameFolder(folder.id)}
-                      >
-                        Save
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setEditingId(null)}
-                      >
-                        Cancel
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                        {folder.name}
-                      </span>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        disabled={busyId === folder.id}
-                        onClick={() => {
-                          setEditingId(folder.id);
-                          setEditName(folder.name);
-                        }}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                        Rename
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        className="text-destructive"
-                        disabled={busyId === folder.id}
-                        onClick={() => void deleteFolder(folder)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        Delete
-                      </Button>
-                    </>
-                  )}
-                </li>
-              ))}
-            </ul>
-          ) : null}
+                  <FolderPlus className="h-4 w-4" />
+                  Add
+                </Button>
+              </div>
 
-          {studies.length > 0 && folders.length > 0 ? (
-            <div className="flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
-              <select
-                className="h-9 border border-input bg-background px-2 text-sm"
-                value={assignStudyId}
-                onChange={(e) => setAssignStudyId(e.target.value)}
-                aria-label="Study to move"
-              >
-                <option value="">Move a study…</option>
-                {studies.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.title}
-                  </option>
-                ))}
-              </select>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={!assignStudyId}
-                onClick={() => void assignToFolder(selectedFolderId)}
-              >
-                {selectedFolderId ? "Move here" : "Remove from folder"}
-              </Button>
+              {folders.length > 0 ? (
+                <ul className="space-y-2 border-t border-border/60 pt-3">
+                  {folders.map((folder) => (
+                    <li
+                      key={folder.id}
+                      className="flex flex-wrap items-center gap-2"
+                    >
+                      {editingId === folder.id ? (
+                        <>
+                          <Input
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            className="h-8 w-40 sm:w-48"
+                            aria-label={`Rename ${folder.name}`}
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={busyId === folder.id || !editName.trim()}
+                            onClick={() => void renameFolder(folder.id)}
+                          >
+                            Save
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setEditingId(null)}
+                          >
+                            Cancel
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                            {folder.name}
+                          </span>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            disabled={busyId === folder.id}
+                            onClick={() => {
+                              setEditingId(folder.id);
+                              setEditName(folder.name);
+                            }}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            Rename
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="text-destructive"
+                            disabled={busyId === folder.id}
+                            onClick={() => void deleteFolder(folder)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Delete
+                          </Button>
+                        </>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+
+              {studies.length > 0 && folders.length > 0 ? (
+                <div className="flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
+                  <select
+                    className="h-9 border border-input bg-background px-2 text-sm"
+                    value={assignStudyId}
+                    onChange={(e) => setAssignStudyId(e.target.value)}
+                    aria-label="Study to move"
+                  >
+                    <option value="">Move a study…</option>
+                    {studies.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.title}
+                      </option>
+                    ))}
+                  </select>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={!assignStudyId}
+                    onClick={() => void assignToFolder(selectedFolderId)}
+                  >
+                    {selectedFolderId ? "Move here" : "Remove from folder"}
+                  </Button>
+                </div>
+              ) : null}
             </div>
-          ) : null}
-        </div>
-      ) : null}
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </section>
   );
 }

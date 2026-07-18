@@ -54,7 +54,7 @@ export function FlashcardsPanel({
         </p>
         {compact ? (
           <p className="text-sm text-muted-foreground">
-            Nice work — come back when more cards are due.
+            Nice work - come back when more cards are due.
           </p>
         ) : null}
       </div>

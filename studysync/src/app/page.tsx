@@ -15,7 +15,7 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 export default function LandingPage() {
   return (
     <div className="relative min-h-screen overflow-x-hidden">
-      {/* Full-bleed hero — brand first, one composition */}
+      {/* Full-bleed hero - brand first, one composition */}
       <section className="relative isolate min-h-[100svh] overflow-hidden bg-[hsl(158_40%_12%)]">
         <motion.div
           className="absolute inset-0"
@@ -121,7 +121,7 @@ export default function LandingPage() {
             Capture. Structure. Practice.
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
-            One pass from lecture to active recall—without the busywork of
+            One pass from lecture to active recall-without the busywork of
             building decks by hand.
           </p>
         </motion.div>
@@ -131,7 +131,7 @@ export default function LandingPage() {
             {
               step: "01",
               title: "Capture once",
-              body: "YouTube, live recording, PDF, slides, video, or text—cleaned automatically.",
+              body: "YouTube, live recording, PDF, slides, video, or text-cleaned automatically.",
             },
             {
               step: "02",
@@ -166,7 +166,7 @@ export default function LandingPage() {
         </ol>
       </section>
 
-      {/* Product proof — full-bleed forest plane */}
+      {/* Product proof - full-bleed forest plane */}
       <section className="relative overflow-hidden bg-[hsl(158_40%_11%)] text-white">
         <div
           className="pointer-events-none absolute inset-0"
@@ -190,7 +190,7 @@ export default function LandingPage() {
             </h2>
             <p className="max-w-md text-[15px] leading-relaxed text-white/65">
               One workspace for notes, spaced flashcards, quizzes, chat, and
-              podcasts—so the next action is always obvious.
+              podcasts-so the next action is always obvious.
             </p>
           </motion.div>
 

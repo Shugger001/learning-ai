@@ -25,7 +25,7 @@ export async function GET() {
   return apiSuccess(data);
 }
 
-/** Dev/demo helper — add credits without Stripe (gated in production). */
+/** Dev/demo helper - add credits without Stripe (gated in production). */
 export async function POST(request: Request) {
   if (process.env.NODE_ENV === "production") {
     return apiError("Use Stripe checkout in production", 403);

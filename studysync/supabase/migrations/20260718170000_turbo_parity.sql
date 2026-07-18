@@ -159,19 +159,19 @@ create policy "Anyone can read library"
 insert into public.library_items (title, subject, description, content)
 select * from (values
   (
-    'AP US History — Revolution Era',
+    'AP US History - Revolution Era',
     'History',
     'Core concepts from the American Revolution for APUSH review.',
     E'# American Revolution\n\n## Causes\n- Taxation without representation\n- Enlightenment ideas\n- Colonial identity\n\n## Key Events\n- Stamp Act (1765)\n- Boston Tea Party (1773)\n- Declaration of Independence (1776)\n- Treaty of Paris (1783)\n\n## Key People\n- Thomas Jefferson\n- George Washington\n- John Adams'
   ),
   (
-    'Intro to Calculus — Limits & Derivatives',
+    'Intro to Calculus - Limits & Derivatives',
     'Math',
     'Foundational calculus concepts for STEM students.',
     E'# Limits and Derivatives\n\n## Limits\nA limit describes the value a function approaches as the input approaches some value.\n\n## Derivative\nThe derivative is the instantaneous rate of change: f''(x) = lim(h→0) [f(x+h)-f(x)]/h\n\n## Rules\n- Power rule\n- Product rule\n- Chain rule'
   ),
   (
-    'Biology — Cell Structure',
+    'Biology - Cell Structure',
     'Biology',
     'Organelles and cell theory essentials.',
     E'# Cell Structure\n\n## Cell Theory\n1. All living things are made of cells\n2. Cells are the basic unit of life\n3. Cells arise from pre-existing cells\n\n## Organelles\n- Nucleus: genetic control\n- Mitochondria: ATP production\n- Ribosomes: protein synthesis\n- ER & Golgi: processing and transport'

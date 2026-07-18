@@ -88,7 +88,7 @@ export function MindMapPanel({ mindMap }: MindMapPanelProps) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
           {focusName
-            ? `Focused on “${focusName}” — click again or reset to zoom out.`
+            ? `Focused on “${focusName}” - click again or reset to zoom out.`
             : "Click a node to focus its path."}
         </p>
         {focusName ? (

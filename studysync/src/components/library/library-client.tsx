@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import { BookOpen, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { fadeUp, staggerContainer, staggerItem } from "@/lib/motion";
 import type { ApiResponse } from "@/types/api";
 import type { LibraryItem, Study } from "@/types/database";
 
@@ -37,9 +39,9 @@ export function LibraryClient({ items }: { items: LibraryListItem[] }) {
 
   if (!items.length) {
     return (
-      <p className="text-sm text-muted-foreground">
+      <motion.p className="text-sm text-muted-foreground" {...fadeUp}>
         No premade packs yet. Run the Turbo parity migration to seed the library.
-      </p>
+      </motion.p>
     );
   }
 
@@ -50,10 +52,18 @@ export function LibraryClient({ items }: { items: LibraryListItem[] }) {
           {error}
         </p>
       ) : null}
-      <ul className="grid gap-4 sm:grid-cols-2">
+      <motion.ul
+        className="grid gap-4 sm:grid-cols-2"
+        variants={staggerContainer}
+        initial="hidden"
+        animate="show"
+      >
         {items.map((item) => (
-          <li
+          <motion.li
             key={item.id}
+            variants={staggerItem}
+            whileHover={{ y: -4 }}
+            transition={{ type: "spring", stiffness: 400, damping: 28 }}
             className="flex flex-col border border-border/70 bg-card/50 p-5"
           >
             <div className="mb-3 flex h-9 w-9 items-center justify-center border border-border/60 text-muted-foreground">
@@ -79,9 +89,9 @@ export function LibraryClient({ items }: { items: LibraryListItem[] }) {
               ) : null}
               Add to my library
             </Button>
-          </li>
+          </motion.li>
         ))}
-      </ul>
+      </motion.ul>
     </div>
   );
 }

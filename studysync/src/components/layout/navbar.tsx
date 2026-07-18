@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import { LogOut, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
@@ -14,6 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { EASE } from "@/lib/motion";
 
 interface NavbarProps {
   userEmail?: string | null;
@@ -31,7 +33,12 @@ export function Navbar({ userEmail, userName }: NavbarProps) {
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur-md">
+    <motion.header
+      className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur-md"
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: EASE }}
+    >
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
         <Link
           href="/dashboard"
@@ -99,6 +106,6 @@ export function Navbar({ userEmail, userName }: NavbarProps) {
           </DropdownMenu>
         </div>
       </div>
-    </header>
+    </motion.header>
   );
 }

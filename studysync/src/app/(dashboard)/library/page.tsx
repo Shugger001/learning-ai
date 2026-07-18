@@ -12,7 +12,10 @@ export default async function LibraryPage() {
   return (
     <div className="space-y-8">
       <div className="space-y-2">
-        <p className="text-sm font-medium text-primary">Premade library</p>
+        <div className="signal-bar" aria-hidden />
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+          Premade library
+        </p>
         <h1 className="font-display text-3xl font-semibold tracking-tight">
           Browse study packs
         </h1>
@@ -22,10 +25,12 @@ export default async function LibraryPage() {
         </p>
       </div>
       <LibraryClient
-        items={(data as Pick<
-          LibraryItem,
-          "id" | "title" | "subject" | "description" | "created_at"
-        >[]) ?? []}
+        items={
+          (data as Pick<
+            LibraryItem,
+            "id" | "title" | "subject" | "description" | "created_at"
+          >[]) ?? []
+        }
       />
     </div>
   );
