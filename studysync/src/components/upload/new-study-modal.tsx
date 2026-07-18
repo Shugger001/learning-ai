@@ -92,7 +92,7 @@ export function NewStudyModal({
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [contentType, setContentType] = useState<ContentType | null>(null);
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [textContent, setTextContent] = useState("");
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [title, setTitle] = useState("");
@@ -128,11 +128,18 @@ export function NewStudyModal({
       }[]
     ) => {
       setError(null);
-      const next = accepted[0];
-      if (next) {
-        setFile(next);
-        if (!title) setTitle(next.name.replace(/\.[^.]+$/, ""));
-        return;
+      if (accepted.length) {
+        setFiles((prev) => {
+          const merged = [...prev, ...accepted].slice(0, 10);
+          return merged;
+        });
+        if (!title && accepted[0]) {
+          setTitle(
+            accepted.length === 1
+              ? accepted[0].name.replace(/\.[^.]+$/, "")
+              : "Combined lecture materials"
+          );
+        }
       }
       const rejection = rejected[0];
       if (rejection) {
@@ -149,10 +156,10 @@ export function NewStudyModal({
     open: openFilePicker,
   } = useDropzone({
     onDrop,
-    multiple: false,
+    multiple: true,
     accept: Object.keys(accept).length ? accept : undefined,
     disabled: contentType === "text" || contentType === "youtube",
-    maxSize: 50 * 1024 * 1024,
+    maxSize: MAX_FILE_BYTES,
     noClick: true,
     noKeyboard: true,
   });
@@ -160,7 +167,7 @@ export function NewStudyModal({
   function reset() {
     setStep(1);
     setContentType(null);
-    setFile(null);
+    setFiles([]);
     setTextContent("");
     setYoutubeUrl("");
     setTitle("");
@@ -178,6 +185,10 @@ export function NewStudyModal({
     onOpenChange(next);
   }
 
+  function removeFile(index: number) {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  }
+
   async function startRecording() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -192,7 +203,7 @@ export function NewStudyModal({
         const recorded = new File([blob], `lecture-${Date.now()}.webm`, {
           type: "audio/webm",
         });
-        setFile(recorded);
+        setFiles((prev) => [...prev, recorded].slice(0, 10));
         if (!title) setTitle("Live lecture recording");
         setContentType("audio");
       };
@@ -210,27 +221,65 @@ export function NewStudyModal({
     setRecording(false);
   }
 
+  async function uploadOneFile(
+    supabase: ReturnType<typeof createClient>,
+    userId: string,
+    file: File
+  ) {
+    const ext = file.name.split(".").pop() || "bin";
+    const path = `${userId}/${crypto.randomUUID()}.${ext}`;
+    const lower = file.name.toLowerCase();
+    let uploadContentType = file.type || "application/octet-stream";
+    if (lower.endsWith(".pptx") || lower.endsWith(".ppt")) {
+      uploadContentType =
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+    } else if (lower.endsWith(".pdf") && !uploadContentType.includes("pdf")) {
+      uploadContentType = "application/pdf";
+    }
+
+    let { error: uploadError } = await supabase.storage
+      .from("lectures")
+      .upload(path, file, {
+        contentType: uploadContentType,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      const retry = await supabase.storage.from("lectures").upload(path, file, {
+        contentType: "application/octet-stream",
+        upsert: false,
+      });
+      uploadError = retry.error;
+    }
+
+    if (uploadError) {
+      throw new Error(`${file.name}: ${uploadError.message}`);
+    }
+    return path;
+  }
+
   async function handleSubmit() {
     if (!contentType) return;
     if (
       contentType !== "text" &&
       contentType !== "youtube" &&
-      (!file || file.size === 0)
+      files.length === 0
     ) {
-      setError("Please upload or record a file before generating.");
+      setError("Please upload or record at least one file before generating.");
       return;
     }
-    if (file && file.size > MAX_FILE_BYTES) {
-      setError("File is too large. Use a file under 50 MB.");
+    const oversized = files.find((f) => f.size > MAX_FILE_BYTES);
+    if (oversized) {
+      setError(`“${oversized.name}” is too large. Use files under 50 MB each.`);
       return;
     }
     setSubmitting(true);
     setError(null);
 
     try {
-      let filePath: string | undefined;
+      let filePaths: string[] | undefined;
 
-      if (file && contentType !== "text" && contentType !== "youtube") {
+      if (files.length > 0 && contentType !== "text" && contentType !== "youtube") {
         const supabase = createClient();
         const {
           data: { user },
@@ -241,38 +290,10 @@ export function NewStudyModal({
           return;
         }
 
-        const ext = file.name.split(".").pop() || "bin";
-        const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-        const lower = file.name.toLowerCase();
-        let uploadContentType = file.type || "application/octet-stream";
-        if (lower.endsWith(".pptx") || lower.endsWith(".ppt")) {
-          uploadContentType =
-            "application/vnd.openxmlformats-officedocument.presentationml.presentation";
-        } else if (lower.endsWith(".pdf") && !uploadContentType.includes("pdf")) {
-          uploadContentType = "application/pdf";
+        filePaths = [];
+        for (const file of files) {
+          filePaths.push(await uploadOneFile(supabase, user.id, file));
         }
-
-        let { error: uploadError } = await supabase.storage
-          .from("lectures")
-          .upload(path, file, {
-            contentType: uploadContentType,
-            upsert: false,
-          });
-
-        if (uploadError) {
-          const retry = await supabase.storage.from("lectures").upload(path, file, {
-            contentType: "application/octet-stream",
-            upsert: false,
-          });
-          uploadError = retry.error;
-        }
-
-        if (uploadError) {
-          setError(`Upload failed: ${uploadError.message}`);
-          setSubmitting(false);
-          return;
-        }
-        filePath = path;
       }
 
       const res = await fetch("/api/studies", {
@@ -286,7 +307,7 @@ export function NewStudyModal({
           detail_level: detailLevel,
           text_content: contentType === "text" ? textContent : undefined,
           source_url: contentType === "youtube" ? youtubeUrl : undefined,
-          file_path: filePath,
+          file_paths: filePaths,
         }),
       });
       const raw = await res.text();
@@ -327,7 +348,7 @@ export function NewStudyModal({
       ? textContent.trim().length > 20
       : contentType === "youtube"
         ? youtubeUrl.trim().length > 10
-        : Boolean(file);
+        : files.length > 0;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -335,7 +356,7 @@ export function NewStudyModal({
         <DialogHeader>
           <DialogTitle>New Study</DialogTitle>
           <DialogDescription id="new-study-desc">
-            Step {step} of 3 — upload, record, or paste a YouTube link.
+            Step {step} of 3 — add one or more files, then configure your study pack.
           </DialogDescription>
         </DialogHeader>
 
@@ -428,11 +449,35 @@ export function NewStudyModal({
                   <Upload className="h-8 w-8 text-muted-foreground" />
                   <div>
                     <p className="font-medium">
-                      {file ? file.name : "Drag & drop your file"}
+                      {files.length
+                        ? `${files.length} file${files.length === 1 ? "" : "s"} selected`
+                        : "Drag & drop files"}
                     </p>
-                    <p className="text-sm text-muted-foreground">or click to browse</p>
+                    <p className="text-sm text-muted-foreground">
+                      or click to browse · up to 10 files, 50 MB each
+                    </p>
                   </div>
                 </div>
+                {files.length > 0 ? (
+                  <ul className="max-h-40 space-y-2 overflow-y-auto text-sm">
+                    {files.map((f, i) => (
+                      <li
+                        key={`${f.name}-${i}`}
+                        className="flex items-center justify-between gap-3 border border-border/60 px-3 py-2"
+                      >
+                        <span className="truncate">{f.name}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeFile(i)}
+                        >
+                          Remove
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
               </>
             )}
           </div>
@@ -532,7 +577,7 @@ export function NewStudyModal({
               {submitting ? (
                 <>
                   <Loader2 className="animate-spin" />
-                  {file ? "Uploading…" : "Creating…"}
+                  {files.length ? "Uploading…" : "Creating…"}
                 </>
               ) : (
                 "Generate study materials"

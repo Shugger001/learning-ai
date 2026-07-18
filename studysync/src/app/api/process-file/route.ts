@@ -8,6 +8,10 @@ import {
   generateStudyMaterials,
   normalizeSourceText,
 } from "@/lib/ai/generate";
+import {
+  inferContentTypeFromFilename,
+  resolveStudyFilePaths,
+} from "@/lib/studies/files";
 import type { ContentType } from "@/types/database";
 
 export const maxDuration = 300;
@@ -69,27 +73,52 @@ export async function POST(request: Request) {
     await setProgress(admin, study_id, 15, { status: "processing" });
 
     let sourceText = study.transcript_text as string | null;
+    const filePaths = resolveStudyFilePaths(study.file_url);
 
-    if (!sourceText && study.file_url) {
+    if (!sourceText && filePaths.length > 0) {
       await setProgress(admin, study_id, 25);
+      const chunks: string[] = [];
 
-      const { data: fileData, error: downloadError } = await admin.storage
-        .from("lectures")
-        .download(study.file_url);
+      for (let i = 0; i < filePaths.length; i++) {
+        const path = filePaths[i];
+        const { data: fileData, error: downloadError } = await admin.storage
+          .from("lectures")
+          .download(path);
 
-      if (downloadError || !fileData) {
-        throw new Error(downloadError?.message ?? "Failed to download file");
+        if (downloadError || !fileData) {
+          throw new Error(
+            downloadError?.message ?? `Failed to download file ${i + 1}`
+          );
+        }
+
+        const buffer = Buffer.from(await fileData.arrayBuffer());
+        const filename = path.split("/").pop() || "upload.bin";
+        const contentType =
+          (study.content_type as ContentType) === "pdf" ||
+          (study.content_type as ContentType) === "audio" ||
+          (study.content_type as ContentType) === "video"
+            ? (study.content_type as ContentType)
+            : inferContentTypeFromFilename(filename);
+
+        await setProgress(
+          admin,
+          study_id,
+          25 + Math.round(((i + 1) / filePaths.length) * 20)
+        );
+
+        const extracted = await extractTextFromBuffer({
+          buffer,
+          contentType,
+          filename,
+        });
+        const label =
+          filePaths.length > 1
+            ? `\n\n## Source file ${i + 1}: ${filename}\n\n`
+            : "";
+        chunks.push(`${label}${extracted}`);
       }
 
-      const buffer = Buffer.from(await fileData.arrayBuffer());
-      const filename = study.file_url.split("/").pop() || "upload.bin";
-
-      await setProgress(admin, study_id, 40);
-      sourceText = await extractTextFromBuffer({
-        buffer,
-        contentType: study.content_type as ContentType,
-        filename,
-      });
+      sourceText = chunks.join("\n\n");
     }
 
     if (!sourceText?.trim()) {

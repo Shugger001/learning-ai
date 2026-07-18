@@ -4,6 +4,7 @@ import { apiError, apiSuccess } from "@/lib/api/response";
 import { createStudySchema } from "@/lib/validations/study";
 import { fetchYouTubeTranscript } from "@/lib/ai/youtube";
 import { FREE_LIMITS, isPro } from "@/lib/billing/limits";
+import { encodeStudyFilePaths } from "@/lib/studies/files";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -80,12 +81,19 @@ export async function POST(request: Request) {
 
   const needsFile =
     meta.content_type !== "text" && meta.content_type !== "youtube";
-  if (needsFile && !meta.file_path && !uploadedFile) {
+  const incomingPaths = [
+    ...(meta.file_paths ?? []),
+    ...(meta.file_path ? [meta.file_path] : []),
+  ].filter((p, i, arr) => arr.indexOf(p) === i);
+
+  if (needsFile && incomingPaths.length === 0 && !uploadedFile) {
     return apiError("File is required", 400);
   }
 
-  if (meta.file_path && !meta.file_path.startsWith(`${user.id}/`)) {
-    return apiError("Invalid file path", 403);
+  for (const path of incomingPaths) {
+    if (!path.startsWith(`${user.id}/`)) {
+      return apiError("Invalid file path", 403);
+    }
   }
 
   let admin;
@@ -115,7 +123,7 @@ export async function POST(request: Request) {
     );
   }
 
-  let fileUrl: string | null = meta.file_path ?? null;
+  let filePaths = [...incomingPaths];
   let transcriptText: string | null = meta.text_content?.trim() ?? null;
   const sourceUrl: string | null = meta.source_url?.trim() ?? null;
 
@@ -131,7 +139,7 @@ export async function POST(request: Request) {
   }
 
   // Legacy/small-file path: upload through the API (kept for compatibility).
-  if (!fileUrl && uploadedFile) {
+  if (filePaths.length === 0 && uploadedFile) {
     const ext = uploadedFile.name.split(".").pop() || "bin";
     const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
     const buffer = Buffer.from(await uploadedFile.arrayBuffer());
@@ -160,19 +168,26 @@ export async function POST(request: Request) {
         return apiError(`Upload failed: ${uploadError.message}`, 500);
       }
     }
-    fileUrl = path;
+    filePaths = [path];
   }
 
-  if (fileUrl) {
-    const fileName = fileUrl.split("/").pop();
+  if (filePaths.length > 0) {
     const { data: listed, error: listError } = await admin.storage
       .from("lectures")
       .list(user.id, { limit: 1000 });
-    const found = listed?.some((f) => f.name === fileName);
-    if (listError || !found) {
-      return apiError("Uploaded file not found. Please try again.", 400);
+    if (listError) {
+      return apiError("Could not verify uploads. Please try again.", 500);
+    }
+    const names = new Set((listed ?? []).map((f) => f.name));
+    for (const path of filePaths) {
+      const fileName = path.split("/").pop();
+      if (!fileName || !names.has(fileName)) {
+        return apiError("Uploaded file not found. Please try again.", 400);
+      }
     }
   }
+
+  const fileUrl = encodeStudyFilePaths(filePaths);
 
   const { data: study, error: studyError } = await admin
     .from("studies")

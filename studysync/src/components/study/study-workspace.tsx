@@ -15,6 +15,7 @@ import { ChatPanel } from "@/components/study/chat-panel";
 import { PodcastPanel } from "@/components/study/podcast-panel";
 import { ProcessingView } from "@/components/study/processing-view";
 import { useStudySessionStore } from "@/stores/study-session";
+import { resolveStudyFilePaths } from "@/lib/studies/files";
 import type { ApiResponse } from "@/types/api";
 import type { StudyWithMaterials } from "@/types/database";
 
@@ -96,7 +97,8 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
   const kindLabel =
     study.content_type === "youtube"
       ? "YouTube"
-      : study.content_type === "pdf" && /\.pptx?$/i.test(study.file_url ?? "")
+      : study.content_type === "pdf" &&
+          resolveStudyFilePaths(study.file_url).some((p) => /\.pptx?$/i.test(p))
         ? "PPTX"
         : study.content_type;
 

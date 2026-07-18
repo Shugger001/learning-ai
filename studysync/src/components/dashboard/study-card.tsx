@@ -10,6 +10,7 @@ import {
   Video,
   Clapperboard,
 } from "lucide-react";
+import { resolveStudyFilePaths } from "@/lib/studies/files";
 import { cn } from "@/lib/utils/cn";
 import type { ContentType, Study } from "@/types/database";
 
@@ -17,8 +18,10 @@ function kindFromStudy(study: Study): {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
 } {
+  const paths = resolveStudyFilePaths(study.file_url);
   const isPptx =
-    study.content_type === "pdf" && /\.pptx?$/i.test(study.file_url ?? "");
+    study.content_type === "pdf" &&
+    paths.some((p) => /\.pptx?$/i.test(p));
 
   if (isPptx) {
     return { label: "PowerPoint", icon: Presentation };
