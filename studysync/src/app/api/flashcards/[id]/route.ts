@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { updateFlashcardSchema } from "@/lib/validations/study";
+import { applySrsRating } from "@/lib/ai/srs";
 
 interface RouteParams {
   params: { id: string };
@@ -24,7 +25,9 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
   const { data: existing } = await supabase
     .from("flashcards")
-    .select("id, study_id, studies!inner(user_id)")
+    .select(
+      "id, study_id, ease, interval_days, reps, due_at, difficulty, studies!inner(user_id)"
+    )
     .eq("id", params.id)
     .single();
 
@@ -32,9 +35,26 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     return apiError("Flashcard not found", 404);
   }
 
+  const patch: Record<string, unknown> = { ...parsed.data };
+  delete patch.srs_rating;
+
+  if (parsed.data.srs_rating) {
+    const next = applySrsRating(
+      {
+        ease: Number(existing.ease ?? 2.5),
+        interval_days: Number(existing.interval_days ?? 0),
+        reps: Number(existing.reps ?? 0),
+        due_at: existing.due_at ?? new Date().toISOString(),
+        difficulty: existing.difficulty ?? "medium",
+      },
+      parsed.data.srs_rating
+    );
+    Object.assign(patch, next);
+  }
+
   const { data, error } = await supabase
     .from("flashcards")
-    .update(parsed.data)
+    .update(patch)
     .eq("id", params.id)
     .select("*")
     .single();

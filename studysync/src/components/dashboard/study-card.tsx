@@ -8,6 +8,7 @@ import {
   Presentation,
   Type,
   Video,
+  Clapperboard,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import type { ContentType, Study } from "@/types/database";
@@ -31,6 +32,7 @@ function kindFromStudy(study: Study): {
     pdf: { label: "PDF", icon: FileText },
     audio: { label: "Audio", icon: FileAudio },
     text: { label: "Text", icon: Type },
+    youtube: { label: "YouTube", icon: Clapperboard },
   };
 
   return map[study.content_type];

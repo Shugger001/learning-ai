@@ -1,13 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
 import ReactMarkdown from "react-markdown";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
 import { Check, Copy, Download, Pencil, Save, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils/cn";
 import type { ApiResponse } from "@/types/api";
 import type { Note } from "@/types/database";
+import "katex/dist/katex.min.css";
 
 interface NotesPanelProps {
   note: Note | null;
@@ -20,6 +25,54 @@ export function NotesPanel({ note }: NotesPanelProps) {
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  const saveNote = useCallback(
+    async (nextContent: string, nextSummary: string, silent = false) => {
+      if (!note) return;
+      if (!silent) setSaving(true);
+      setMessage(null);
+      const res = await fetch(`/api/notes/${note.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: nextContent, summary: nextSummary }),
+      });
+      const json = (await res.json()) as ApiResponse<Note>;
+      if (!silent) setSaving(false);
+      setMessage(json.success ? (silent ? "Autosaved" : "Saved") : json.error);
+      if (json.success && !silent) setEditing(false);
+    },
+    [note]
+  );
+
+  const editor = useEditor({
+    extensions: [StarterKit],
+    content: markdownToHtml(content),
+    editable: editing,
+    immediatelyRender: false,
+    onUpdate: ({ editor: ed }) => {
+      const html = ed.getHTML();
+      const md = htmlToMarkdownish(html);
+      setContent(md);
+    },
+    editorProps: {
+      attributes: {
+        class:
+          "min-h-[280px] rounded-lg border border-border/60 bg-card px-4 py-3 text-[15px] leading-relaxed focus:outline-none prose prose-sm max-w-none dark:prose-invert",
+      },
+    },
+  });
+
+  useEffect(() => {
+    editor?.setEditable(editing);
+  }, [editing, editor]);
+
+  useEffect(() => {
+    if (!editing || !note) return;
+    const timer = setTimeout(() => {
+      void saveNote(content, summary, true);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [content, summary, editing, note, saveNote]);
 
   if (!note) {
     return (
@@ -68,20 +121,6 @@ export function NotesPanel({ note }: NotesPanelProps) {
     printWindow.document.close();
   }
 
-  async function save() {
-    setSaving(true);
-    setMessage(null);
-    const res = await fetch(`/api/notes/${note!.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content, summary }),
-    });
-    const json = (await res.json()) as ApiResponse<Note>;
-    setSaving(false);
-    setMessage(json.success ? "Saved" : json.error);
-    if (json.success) setEditing(false);
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-2">
@@ -101,12 +140,22 @@ export function NotesPanel({ note }: NotesPanelProps) {
           type="button"
           variant="outline"
           size="sm"
-          onClick={() => setEditing((v) => !v)}
+          onClick={() => {
+            if (!editing && editor) {
+              editor.commands.setContent(markdownToHtml(content));
+            }
+            setEditing((v) => !v);
+          }}
         >
           {editing ? <Eye className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
           {editing ? "Preview" : "Edit"}
         </Button>
-        <Button type="button" size="sm" onClick={save} disabled={saving}>
+        <Button
+          type="button"
+          size="sm"
+          onClick={() => void saveNote(content, summary)}
+          disabled={saving}
+        >
           <Save className="h-4 w-4" />
           {saving ? "Saving…" : "Save"}
         </Button>
@@ -133,12 +182,35 @@ export function NotesPanel({ note }: NotesPanelProps) {
       <section className="space-y-2">
         <h2 className="text-sm font-medium text-muted-foreground">Notes</h2>
         {editing ? (
-          <Textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            className="min-h-[320px] font-mono text-sm"
-            aria-label="Detailed notes"
-          />
+          <div className="space-y-2">
+            <div className="flex flex-wrap gap-1">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => editor?.chain().focus().toggleBold().run()}
+              >
+                Bold
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}
+              >
+                H2
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => editor?.chain().focus().toggleBulletList().run()}
+              >
+                List
+              </Button>
+            </div>
+            <EditorContent editor={editor} />
+          </div>
         ) : (
           <article
             className={cn(
@@ -150,10 +222,13 @@ export function NotesPanel({ note }: NotesPanelProps) {
               "[&_ul]:my-3 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5",
               "[&_ol]:my-3 [&_ol]:list-decimal [&_ol]:space-y-1.5 [&_ol]:pl-5",
               "[&_li]:leading-relaxed [&_strong]:font-semibold",
-              "[&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-sm"
+              "[&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-sm",
+              "[&_.katex]:text-[1.05em]"
             )}
           >
-            <ReactMarkdown>{content || "_No notes yet._"}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+              {content || "_No notes yet._"}
+            </ReactMarkdown>
           </article>
         )}
       </section>
@@ -172,6 +247,40 @@ function escapeHtml(value: string) {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
+}
+
+function markdownToHtml(md: string) {
+  const escaped = escapeHtml(md);
+  return escaped
+    .replace(/^### (.+)$/gm, "<h3>$1</h3>")
+    .replace(/^## (.+)$/gm, "<h2>$1</h2>")
+    .replace(/^# (.+)$/gm, "<h1>$1</h1>")
+    .replace(/^\- (.+)$/gm, "<li>$1</li>")
+    .replace(/(<li>.*<\/li>\n?)+/g, (block) => `<ul>${block}</ul>`)
+    .replace(/\n\n/g, "</p><p>")
+    .replace(/^(?!<[hul])/gm, (line) =>
+      line.startsWith("<") ? line : `<p>${line}</p>`
+    );
+}
+
+function htmlToMarkdownish(html: string) {
+  return html
+    .replace(/<h1[^>]*>(.*?)<\/h1>/gi, "# $1\n\n")
+    .replace(/<h2[^>]*>(.*?)<\/h2>/gi, "## $1\n\n")
+    .replace(/<h3[^>]*>(.*?)<\/h3>/gi, "### $1\n\n")
+    .replace(/<strong[^>]*>(.*?)<\/strong>/gi, "**$1**")
+    .replace(/<b[^>]*>(.*?)<\/b>/gi, "**$1**")
+    .replace(/<li[^>]*>(.*?)<\/li>/gi, "- $1\n")
+    .replace(/<\/?ul[^>]*>/gi, "\n")
+    .replace(/<\/?ol[^>]*>/gi, "\n")
+    .replace(/<p[^>]*>(.*?)<\/p>/gi, "$1\n\n")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .trim();
 }
 
 function markdownToSimpleHtml(md: string) {

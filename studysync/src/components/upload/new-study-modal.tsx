@@ -1,15 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDropzone } from "react-dropzone";
 import {
-  FileAudio,
   FileText,
+  Link2,
   Loader2,
+  Mic,
+  Square,
   Type,
   Upload,
   Video,
+  Clapperboard,
 } from "lucide-react";
 import {
   Dialog,
@@ -30,7 +33,6 @@ import type { ContentType, DetailLevel, Study } from "@/types/database";
 interface NewStudyModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** When opening from a quick action, skip to upload with this type selected. */
   initialContentType?: ContentType | null;
 }
 
@@ -41,10 +43,16 @@ const CONTENT_TYPES: {
   accept: Record<string, string[]>;
 }[] = [
   {
-    type: "video",
-    label: "Video",
-    icon: Video,
-    accept: { "video/*": [".mp4", ".webm", ".mov"] },
+    type: "youtube",
+    label: "YouTube",
+    icon: Clapperboard,
+    accept: {},
+  },
+  {
+    type: "audio",
+    label: "Record / Audio",
+    icon: Mic,
+    accept: { "audio/*": [".mp3", ".wav", ".m4a", ".webm", ".ogg"] },
   },
   {
     type: "pdf",
@@ -52,7 +60,6 @@ const CONTENT_TYPES: {
     icon: FileText,
     accept: {
       "application/pdf": [".pdf"],
-      "application/x-pdf": [".pdf"],
       "application/vnd.openxmlformats-officedocument.presentationml.presentation": [
         ".pptx",
       ],
@@ -61,10 +68,10 @@ const CONTENT_TYPES: {
     },
   },
   {
-    type: "audio",
-    label: "Audio",
-    icon: FileAudio,
-    accept: { "audio/*": [".mp3", ".wav", ".m4a"] },
+    type: "video",
+    label: "Video",
+    icon: Video,
+    accept: { "video/*": [".mp4", ".webm", ".mov"] },
   },
   {
     type: "text",
@@ -84,12 +91,16 @@ export function NewStudyModal({
   const [contentType, setContentType] = useState<ContentType | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [textContent, setTextContent] = useState("");
+  const [youtubeUrl, setYoutubeUrl] = useState("");
   const [title, setTitle] = useState("");
   const [flashcardCount, setFlashcardCount] = useState<10 | 20 | 50>(20);
   const [quizCount, setQuizCount] = useState<5 | 10 | 15 | 20>(10);
   const [detailLevel, setDetailLevel] = useState<DetailLevel>("detailed");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [recording, setRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
 
   useEffect(() => {
     if (!open) return;
@@ -106,23 +117,23 @@ export function NewStudyModal({
   }, [contentType]);
 
   const onDrop = useCallback(
-    (accepted: File[], rejected: { file: File; errors: readonly { code: string; message: string }[] }[]) => {
+    (
+      accepted: File[],
+      rejected: {
+        file: File;
+        errors: readonly { code: string; message: string }[];
+      }[]
+    ) => {
       setError(null);
       const next = accepted[0];
       if (next) {
         setFile(next);
-        if (!title) {
-          setTitle(next.name.replace(/\.[^.]+$/, ""));
-        }
+        if (!title) setTitle(next.name.replace(/\.[^.]+$/, ""));
         return;
       }
-
       const rejection = rejected[0];
       if (rejection) {
-        const name = rejection.file.name;
-        setError(
-          `Could not load “${name}”. For slides, use PDF or PowerPoint (.pptx) under 50 MB.`
-        );
+        setError(`Could not load “${rejection.file.name}”.`);
       }
     },
     [title]
@@ -137,7 +148,7 @@ export function NewStudyModal({
     onDrop,
     multiple: false,
     accept: Object.keys(accept).length ? accept : undefined,
-    disabled: contentType === "text",
+    disabled: contentType === "text" || contentType === "youtube",
     maxSize: 50 * 1024 * 1024,
     noClick: true,
     noKeyboard: true,
@@ -148,17 +159,52 @@ export function NewStudyModal({
     setContentType(null);
     setFile(null);
     setTextContent("");
+    setYoutubeUrl("");
     setTitle("");
     setFlashcardCount(20);
     setQuizCount(10);
     setDetailLevel("detailed");
     setSubmitting(false);
     setError(null);
+    setRecording(false);
+    mediaRecorderRef.current?.stop();
   }
 
   function handleOpenChange(next: boolean) {
     if (!next) reset();
     onOpenChange(next);
+  }
+
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      chunksRef.current = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size) chunksRef.current.push(e.data);
+      };
+      recorder.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        const recorded = new File([blob], `lecture-${Date.now()}.webm`, {
+          type: "audio/webm",
+        });
+        setFile(recorded);
+        if (!title) setTitle("Live lecture recording");
+        setContentType("audio");
+      };
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setRecording(true);
+      setError(null);
+    } catch {
+      setError("Microphone permission is required to record.");
+    }
+  }
+
+  function stopRecording() {
+    mediaRecorderRef.current?.stop();
+    setRecording(false);
   }
 
   async function handleSubmit() {
@@ -176,12 +222,11 @@ export function NewStudyModal({
         quiz_count: quizCount,
         detail_level: detailLevel,
         text_content: contentType === "text" ? textContent : undefined,
+        source_url: contentType === "youtube" ? youtubeUrl : undefined,
       })
     );
 
-    if (file) {
-      formData.append("file", file);
-    }
+    if (file) formData.append("file", file);
 
     try {
       const res = await fetch("/api/studies", {
@@ -189,13 +234,15 @@ export function NewStudyModal({
         body: formData,
       });
       const json = (await res.json()) as ApiResponse<Study>;
-
       if (!json.success) {
-        setError(json.error);
+        setError(
+          json.error.includes("Upgrade")
+            ? `${json.error} Visit Pricing to go Pro.`
+            : json.error
+        );
         setSubmitting(false);
         return;
       }
-
       handleOpenChange(false);
       router.push(`/study/${json.data.id}`);
       router.refresh();
@@ -208,7 +255,9 @@ export function NewStudyModal({
   const canNextFromStep2 =
     contentType === "text"
       ? textContent.trim().length > 20
-      : Boolean(file);
+      : contentType === "youtube"
+        ? youtubeUrl.trim().length > 10
+        : Boolean(file);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -216,12 +265,12 @@ export function NewStudyModal({
         <DialogHeader>
           <DialogTitle>New Study</DialogTitle>
           <DialogDescription id="new-study-desc">
-            Step {step} of 3 — turn a lecture into flashcards, notes, and quizzes.
+            Step {step} of 3 — upload, record, or paste a YouTube link.
           </DialogDescription>
         </DialogHeader>
 
         {step === 1 ? (
-          <div className="grid grid-cols-2 gap-3" role="listbox" aria-label="Content type">
+          <div className="grid grid-cols-2 gap-3" role="listbox">
             {CONTENT_TYPES.map(({ type, label, icon: Icon }) => (
               <button
                 key={type}
@@ -230,7 +279,7 @@ export function NewStudyModal({
                 aria-selected={contentType === type}
                 onClick={() => setContentType(type)}
                 className={cn(
-                  "flex flex-col items-center gap-2 rounded-lg border p-5 text-sm font-medium transition-colors hover:bg-accent",
+                  "flex flex-col items-center gap-2 border p-5 text-sm font-medium transition-colors hover:bg-accent",
                   contentType === type && "border-foreground bg-accent"
                 )}
               >
@@ -250,38 +299,71 @@ export function NewStudyModal({
                   id="paste"
                   value={textContent}
                   onChange={(e) => setTextContent(e.target.value)}
-                  placeholder="Paste notes, transcript, or reading…"
                   className="min-h-[180px]"
                 />
               </div>
-            ) : (
-              <div
-                {...getRootProps()}
-                role="button"
-                tabIndex={0}
-                onClick={() => openFilePicker()}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    openFilePicker();
-                  }
-                }}
-                className={cn(
-                  "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-10 text-center transition-colors",
-                  isDragActive ? "border-foreground bg-accent" : "hover:bg-muted/40"
-                )}
-              >
-                <input {...getInputProps()} aria-label="Upload lecture file" />
-                <Upload className="h-8 w-8 text-muted-foreground" aria-hidden />
-                <div>
-                  <p className="font-medium">
-                    {file ? file.name : "Drag & drop your file"}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    or click to browse
-                  </p>
+            ) : contentType === "youtube" ? (
+              <div className="space-y-2">
+                <Label htmlFor="yt">YouTube URL</Label>
+                <div className="flex gap-2">
+                  <Link2 className="mt-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="yt"
+                    value={youtubeUrl}
+                    onChange={(e) => {
+                      setYoutubeUrl(e.target.value);
+                      if (!title) setTitle("YouTube lecture");
+                    }}
+                    placeholder="https://www.youtube.com/watch?v=…"
+                  />
                 </div>
               </div>
+            ) : (
+              <>
+                {contentType === "audio" ? (
+                  <div className="flex gap-2">
+                    {!recording ? (
+                      <Button type="button" variant="outline" onClick={() => void startRecording()}>
+                        <Mic className="h-4 w-4" />
+                        Record lecture
+                      </Button>
+                    ) : (
+                      <Button type="button" variant="destructive" onClick={stopRecording}>
+                        <Square className="h-4 w-4" />
+                        Stop recording
+                      </Button>
+                    )}
+                    <span className="self-center text-sm text-muted-foreground">
+                      or upload an audio file below
+                    </span>
+                  </div>
+                ) : null}
+                <div
+                  {...getRootProps()}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openFilePicker()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openFilePicker();
+                    }
+                  }}
+                  className={cn(
+                    "flex cursor-pointer flex-col items-center justify-center gap-3 border border-dashed p-10 text-center transition-colors",
+                    isDragActive ? "border-foreground bg-accent" : "hover:bg-muted/40"
+                  )}
+                >
+                  <input {...getInputProps()} />
+                  <Upload className="h-8 w-8 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium">
+                      {file ? file.name : "Drag & drop your file"}
+                    </p>
+                    <p className="text-sm text-muted-foreground">or click to browse</p>
+                  </div>
+                </div>
+              </>
             )}
           </div>
         ) : null}
@@ -294,11 +376,10 @@ export function NewStudyModal({
                 id="title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Biology Lecture 4"
               />
             </div>
             <div className="space-y-2">
-              <Label>Number of flashcards</Label>
+              <Label>Flashcards</Label>
               <div className="flex gap-2">
                 {([10, 20, 50] as const).map((n) => (
                   <Button
@@ -307,7 +388,6 @@ export function NewStudyModal({
                     variant={flashcardCount === n ? "default" : "outline"}
                     size="sm"
                     onClick={() => setFlashcardCount(n)}
-                    aria-pressed={flashcardCount === n}
                   >
                     {n}
                   </Button>
@@ -315,7 +395,7 @@ export function NewStudyModal({
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Number of quiz questions</Label>
+              <Label>Quiz questions</Label>
               <div className="flex gap-2">
                 {([5, 10, 15, 20] as const).map((n) => (
                   <Button
@@ -324,7 +404,6 @@ export function NewStudyModal({
                     variant={quizCount === n ? "default" : "outline"}
                     size="sm"
                     onClick={() => setQuizCount(n)}
-                    aria-pressed={quizCount === n}
                   >
                     {n}
                   </Button>
@@ -342,7 +421,6 @@ export function NewStudyModal({
                     size="sm"
                     className="capitalize"
                     onClick={() => setDetailLevel(level)}
-                    aria-pressed={detailLevel === level}
                   >
                     {level}
                   </Button>
@@ -383,7 +461,7 @@ export function NewStudyModal({
             <Button type="button" onClick={handleSubmit} disabled={submitting}>
               {submitting ? (
                 <>
-                  <Loader2 className="animate-spin" aria-hidden />
+                  <Loader2 className="animate-spin" />
                   Creating…
                 </>
               ) : (

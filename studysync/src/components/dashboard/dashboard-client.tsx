@@ -5,18 +5,21 @@ import Link from "next/link";
 import {
   ArrowRight,
   ArrowUpRight,
-  FileAudio,
+  BookOpen,
   FileText,
+  Mic,
   Plus,
   Type,
   Video,
+  Clapperboard,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { NewStudyModal } from "@/components/upload/new-study-modal";
 import { StudyCard } from "@/components/dashboard/study-card";
+import { FolderBar } from "@/components/dashboard/folder-bar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils/cn";
-import type { ContentType, Study } from "@/types/database";
+import type { ContentType, Folder, PlanType, Study } from "@/types/database";
 
 export interface StudySummary {
   study_id: string;
@@ -28,6 +31,9 @@ type LibraryFilter = "all" | "complete" | "processing" | "error";
 interface DashboardClientProps {
   studies: Study[];
   summaries: StudySummary[];
+  folders: Folder[];
+  dueToday: number;
+  plan: PlanType;
   userName?: string | null;
 }
 
@@ -37,6 +43,18 @@ const QUICK_START: {
   hint: string;
   icon: React.ComponentType<{ className?: string }>;
 }[] = [
+  {
+    type: "youtube",
+    label: "YouTube",
+    hint: "Paste a lecture link",
+    icon: Clapperboard,
+  },
+  {
+    type: "audio",
+    label: "Record",
+    hint: "Capture live lecture audio",
+    icon: Mic,
+  },
   {
     type: "pdf",
     label: "PDF / Slides",
@@ -48,12 +66,6 @@ const QUICK_START: {
     label: "Video",
     hint: "Recorded lectures",
     icon: Video,
-  },
-  {
-    type: "audio",
-    label: "Audio",
-    hint: "Podcasts & voice notes",
-    icon: FileAudio,
   },
   {
     type: "text",
@@ -71,20 +83,26 @@ const FILTERS: { id: LibraryFilter; label: string }[] = [
 ];
 
 const TIPS = [
-  "Review flashcards within 24 hours — spaced recall sticks better.",
-  "Mark hard cards and revisit them before your next lecture.",
-  "Skim the mind map first, then drill quizzes for weak spots.",
-  "Edit AI notes so definitions match your professor’s language.",
+  "Review due flashcards daily — spaced recall sticks better.",
+  "Chat with a study when a concept still feels fuzzy.",
+  "Generate a podcast for commute review.",
+  "Browse the premade library for AP and STEM starters.",
 ];
 
 export function DashboardClient({
-  studies,
+  studies: initialStudies,
   summaries,
+  folders: initialFolders,
+  dueToday,
+  plan,
   userName,
 }: DashboardClientProps) {
+  const [studies, setStudies] = useState(initialStudies);
+  const [folders, setFolders] = useState(initialFolders);
   const [open, setOpen] = useState(false);
   const [initialType, setInitialType] = useState<ContentType | null>(null);
   const [filter, setFilter] = useState<LibraryFilter>("all");
+  const [folderId, setFolderId] = useState<string | null>(null);
 
   const firstName = userName?.trim().split(/\s+/)[0] || null;
 
@@ -121,9 +139,11 @@ export function DashboardClient({
   );
 
   const filtered = useMemo(() => {
-    if (filter === "all") return studies;
-    return studies.filter((s) => s.status === filter);
-  }, [studies, filter]);
+    let list = studies;
+    if (folderId) list = list.filter((s) => s.folder_id === folderId);
+    if (filter !== "all") list = list.filter((s) => s.status === filter);
+    return list;
+  }, [studies, filter, folderId]);
 
   const tip = TIPS[new Date().getDate() % TIPS.length];
 
@@ -155,17 +175,31 @@ export function DashboardClient({
               {firstName ? `Welcome back, ${firstName}` : "Your studies"}
             </h1>
             <p className="text-[15px] leading-relaxed text-muted-foreground">
-              Upload a lecture and StudySync builds notes, flashcards, and
-              quizzes ready for active recall.
+              Upload, record, or paste a YouTube link — StudySync builds notes,
+              flashcards, quizzes, chat, and podcasts.
             </p>
+            <div className="flex flex-wrap gap-3 pt-1 text-sm">
+              <Link href="/library" className="text-primary hover:underline">
+                Premade library
+              </Link>
+              <Link href="/pricing" className="text-muted-foreground hover:text-foreground">
+                {plan === "pro" ? "Pro plan" : "Upgrade"}
+              </Link>
+              {dueToday > 0 ? (
+                <span className="text-muted-foreground">
+                  {dueToday} card{dueToday === 1 ? "" : "s"} due today
+                </span>
+              ) : null}
+            </div>
           </div>
 
           <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:gap-10">
             {studies.length > 0 ? (
-              <dl className="grid grid-cols-2 gap-x-8 gap-y-4 sm:grid-cols-4">
+              <dl className="grid grid-cols-2 gap-x-8 gap-y-4 sm:grid-cols-5">
                 {[
                   { label: "Studies", value: stats.total },
                   { label: "Ready", value: stats.complete },
+                  { label: "Due", value: dueToday },
                   { label: "Cards", value: stats.cards },
                   { label: "Quiz Qs", value: stats.quizzes },
                 ].map((item) => (
@@ -193,17 +227,16 @@ export function DashboardClient({
         </div>
       </section>
 
-      {/* Quick start */}
       <section className="mt-10">
         <div className="mb-4">
           <h2 className="font-display text-xl font-semibold tracking-tight">
             Start from
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Jump straight into the upload flow for each format.
+            Jump straight into YouTube, recording, or file upload.
           </p>
         </div>
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {QUICK_START.map(({ type, label, hint, icon: Icon }) => (
             <li key={type}>
               <button
@@ -228,6 +261,21 @@ export function DashboardClient({
         </ul>
       </section>
 
+      <div className="mt-10">
+        <FolderBar
+          folders={folders}
+          studies={studies}
+          selectedFolderId={folderId}
+          onSelectFolder={setFolderId}
+          onFoldersChange={setFolders}
+          onStudyMoved={(study) =>
+            setStudies((prev) =>
+              prev.map((s) => (s.id === study.id ? study : s))
+            )
+          }
+        />
+      </div>
+
       {studies.length === 0 ? (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -239,17 +287,24 @@ export function DashboardClient({
             Begin with one lecture
           </h2>
           <p className="mt-3 max-w-md text-[15px] leading-relaxed text-muted-foreground">
-            Drop a PDF, PowerPoint, video, or audio file. StudySync will turn it
-            into a study pack in minutes.
+            Paste a YouTube link, record live audio, or drop a PDF. StudySync
+            turns it into a full study pack.
           </p>
-          <Button className="mt-8" onClick={() => openNew()}>
-            <Plus className="h-4 w-4" />
-            Upload lecture
-          </Button>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Button onClick={() => openNew()}>
+              <Plus className="h-4 w-4" />
+              Upload lecture
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/library">
+                <BookOpen className="h-4 w-4" />
+                Browse library
+              </Link>
+            </Button>
+          </div>
         </motion.div>
       ) : (
         <>
-          {/* Continue */}
           {continueStudy ? (
             <section className="mt-10 border border-border/70 bg-card/50">
               <div className="flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
@@ -280,7 +335,6 @@ export function DashboardClient({
             </section>
           ) : null}
 
-          {/* In progress */}
           {processingStudies.length > 0 ? (
             <section className="mt-10 space-y-4">
               <div>
@@ -319,7 +373,6 @@ export function DashboardClient({
             </section>
           ) : null}
 
-          {/* Failed */}
           {failedStudies.length > 0 ? (
             <section className="mt-10 border border-destructive/30 bg-destructive/5 px-5 py-4">
               <h2 className="font-display text-lg font-semibold tracking-tight">
@@ -346,7 +399,6 @@ export function DashboardClient({
             </section>
           ) : null}
 
-          {/* Library grid */}
           <section className="mt-10 space-y-5">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
@@ -440,7 +492,6 @@ export function DashboardClient({
             )}
           </section>
 
-          {/* Tip */}
           <section className="mt-12 border-t border-border/70 pt-8">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">
               Today’s tip

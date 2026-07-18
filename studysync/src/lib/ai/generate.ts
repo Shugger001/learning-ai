@@ -9,9 +9,10 @@ const flashcardSchema = z.object({
 
 const quizSchema = z.object({
   question: z.string(),
-  options: z.array(z.string()).min(2).max(6),
+  options: z.array(z.string()).min(0).max(6),
   correct_answer: z.string(),
   explanation: z.string(),
+  quiz_type: z.enum(["mcq", "fill_blank", "short_answer"]).default("mcq"),
 });
 
 const mindMapSchema: z.ZodType<MindMapNode> = z.lazy(() =>
@@ -128,13 +129,15 @@ Return ONLY valid JSON matching this shape:
   "summary": string (2–4 polished sentences, no line breaks mid-sentence),
   "notes": string (clean markdown ready to read),
   "flashcards": [{ "question": string, "answer": string }],
-  "quizzes": [{ "question": string, "options": string[], "correct_answer": string, "explanation": string }],
+  "quizzes": [{ "question": string, "options": string[], "correct_answer": string, "explanation": string, "quiz_type": "mcq" | "fill_blank" | "short_answer" }],
   "mind_map": { "name": string, "children": [{ "name": string, "children": [...] }] }
 }
 Rules:
 - Generate exactly ${params.flashcardCount} flashcards for active recall.
-- Generate exactly ${quizCount} multiple-choice quiz questions with 4 options each.
-- correct_answer must exactly match one option.
+- Generate exactly ${quizCount} quiz questions mixing mcq, fill_blank, and short_answer (prefer ~60% mcq).
+- For mcq: provide exactly 4 options; correct_answer must match one option.
+- For fill_blank: options can be []; question should include a blank like "____"; correct_answer is the missing word/phrase.
+- For short_answer: options can be []; correct_answer is a concise model answer.
 - ${notesGuidance}
 - Notes MUST use proper markdown: # / ## headings, bullet lists, and short paragraphs — never one word per line.
 - Rewrite slide fragments into coherent study prose; do not dump raw OCR/slide text.
@@ -216,6 +219,25 @@ export function generateMockMaterials(params: {
     const section = slides[i % Math.max(slides.length, 1)];
     const focus = section?.heading ?? `topic ${i + 1}`;
     const correct = `Core idea from ${focus}`;
+    const kind = i % 3;
+    if (kind === 1) {
+      return {
+        question: `Fill in the blank: The key idea of “${focus}” is ____.`,
+        options: [],
+        correct_answer: focus,
+        explanation: `This checks recall of ${focus}.`,
+        quiz_type: "fill_blank" as const,
+      };
+    }
+    if (kind === 2) {
+      return {
+        question: `In your own words, explain “${focus}” from ${title}.`,
+        options: [],
+        correct_answer: section?.body.slice(0, 120) || correct,
+        explanation: `Compare your answer to the model response.`,
+        quiz_type: "short_answer" as const,
+      };
+    }
     return {
       question: `Which statement best matches “${focus}” in ${title}?`,
       options: [
@@ -226,6 +248,7 @@ export function generateMockMaterials(params: {
       ],
       correct_answer: correct,
       explanation: `This question checks understanding of ${focus}.`,
+      quiz_type: "mcq" as const,
     };
   });
 
@@ -269,4 +292,118 @@ function splitIntoSections(
   }
 
   return sections.filter((s) => s.body.length > 0);
+}
+
+export async function generatePracticeQuestions(params: {
+  sourceText: string;
+  count: number;
+  types?: Array<"mcq" | "fill_blank" | "short_answer">;
+}) {
+  const types = params.types?.length
+    ? params.types
+    : (["mcq", "fill_blank", "short_answer"] as const);
+  const count = Math.min(20, Math.max(1, params.count));
+
+  if (!process.env.OPENAI_API_KEY) {
+    return generateMockMaterials({
+      sourceText: params.sourceText,
+      flashcardCount: 1,
+      quizCount: count,
+      titleHint: "Practice",
+    }).quizzes.slice(0, count);
+  }
+
+  const openai = getOpenAI();
+  const truncated = normalizeSourceText(params.sourceText).slice(0, 60_000);
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    temperature: 0.5,
+    response_format: { type: "json_object" },
+    messages: [
+      {
+        role: "system",
+        content: `Generate exactly ${count} practice questions as JSON: { "quizzes": [{ question, options, correct_answer, explanation, quiz_type }] }.
+Allowed quiz_type values: ${types.join(", ")}. Mix types. For mcq use 4 options.`,
+      },
+      { role: "user", content: truncated },
+    ],
+  });
+  const raw = completion.choices[0]?.message?.content;
+  if (!raw) throw new Error("No practice questions returned");
+  const parsed = z
+    .object({ quizzes: z.array(quizSchema) })
+    .parse(JSON.parse(raw));
+  return parsed.quizzes;
+}
+
+export async function generatePodcastScript(sourceText: string, title: string) {
+  if (!process.env.OPENAI_API_KEY) {
+    return `Host A: Welcome to StudySync Audio — today we're reviewing ${title}.
+Host B: Let's start with the big ideas.
+Host A: ${normalizeSourceText(sourceText).slice(0, 500)}
+Host B: Great summary. Review your flashcards next!`;
+  }
+
+  const openai = getOpenAI();
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    temperature: 0.6,
+    messages: [
+      {
+        role: "system",
+        content:
+          "Write a lively 2-host educational podcast script (Host A / Host B) summarizing the study material in under 700 words. Plain text only, with 'Host A:' and 'Host B:' labels.",
+      },
+      {
+        role: "user",
+        content: `Title: ${title}\n\n${normalizeSourceText(sourceText).slice(0, 40_000)}`,
+      },
+    ],
+  });
+  return completion.choices[0]?.message?.content?.trim() || "";
+}
+
+export async function synthesizePodcastAudio(script: string): Promise<Buffer> {
+  const openai = getOpenAI();
+  const spoken = script
+    .replace(/^Host A:\s*/gm, "")
+    .replace(/^Host B:\s*/gm, "")
+    .slice(0, 4000);
+
+  const response = await openai.audio.speech.create({
+    model: "tts-1",
+    voice: "alloy",
+    input: spoken || "Welcome to your StudySync podcast review.",
+  });
+
+  return Buffer.from(await response.arrayBuffer());
+}
+
+export async function chatAboutStudy(params: {
+  question: string;
+  context: string;
+  history: { role: "user" | "assistant"; content: string }[];
+}) {
+  if (!process.env.OPENAI_API_KEY) {
+    return `Based on your materials: ${params.context.slice(0, 280)}… (Add OPENAI_API_KEY for full chat answers.)`;
+  }
+
+  const openai = getOpenAI();
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    temperature: 0.3,
+    messages: [
+      {
+        role: "system",
+        content: `You are StudySync Tutor. Answer ONLY using the study materials below. Be clear and concise. Use markdown when helpful.\n\nMATERIALS:\n${params.context.slice(0, 80_000)}`,
+      },
+      ...params.history.slice(-8),
+      { role: "user" as const, content: params.question },
+    ],
+  });
+
+  return (
+    completion.choices[0]?.message?.content?.trim() ||
+    "I couldn't generate an answer."
+  );
 }

@@ -2,17 +2,25 @@ import { z } from "zod";
 
 export const createStudySchema = z.object({
   title: z.string().min(1).max(200),
-  content_type: z.enum(["video", "pdf", "audio", "text"]),
+  content_type: z.enum(["video", "pdf", "audio", "text", "youtube"]),
   flashcard_count: z.union([z.literal(10), z.literal(20), z.literal(50)]),
-  quiz_count: z.union([z.literal(5), z.literal(10), z.literal(15), z.literal(20)]),
+  quiz_count: z.union([
+    z.literal(5),
+    z.literal(10),
+    z.literal(15),
+    z.literal(20),
+  ]),
   detail_level: z.enum(["concise", "detailed"]),
   text_content: z.string().optional(),
+  source_url: z.string().url().optional(),
+  folder_id: z.string().uuid().optional().nullable(),
 });
 
 export const updateFlashcardSchema = z.object({
   question: z.string().min(1).optional(),
   answer: z.string().min(1).optional(),
   difficulty: z.enum(["easy", "medium", "hard"]).optional(),
+  srs_rating: z.enum(["again", "hard", "good", "easy"]).optional(),
 });
 
 export const updateNoteSchema = z.object({
@@ -25,6 +33,18 @@ export const updateQuizSchema = z.object({
   options: z.array(z.string()).min(2).optional(),
   correct_answer: z.string().min(1).optional(),
   explanation: z.string().optional(),
+});
+
+export const chatMessageSchema = z.object({
+  study_id: z.string().uuid(),
+  message: z.string().min(1).max(4000),
+});
+
+export const practiceSchema = z.object({
+  count: z.number().int().min(1).max(20).default(5),
+  types: z
+    .array(z.enum(["mcq", "fill_blank", "short_answer"]))
+    .optional(),
 });
 
 export type CreateStudyInput = z.infer<typeof createStudySchema>;

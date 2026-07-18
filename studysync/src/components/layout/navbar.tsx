@@ -42,6 +42,12 @@ export function Navbar({ userEmail, userName }: NavbarProps) {
         </Link>
 
         <div className="flex items-center gap-2">
+          <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
+            <Link href="/library">Library</Link>
+          </Button>
+          <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
+            <Link href="/pricing">Pricing</Link>
+          </Button>
           <ThemeToggle />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -58,6 +64,13 @@ export function Navbar({ userEmail, userName }: NavbarProps) {
                   </p>
                 </div>
               </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild className="cursor-pointer">
+                <Link href="/library">Premade library</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild className="cursor-pointer">
+                <Link href="/pricing">Pricing & plan</Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={signOut} className="cursor-pointer">
                 <LogOut className="mr-2 h-4 w-4" />

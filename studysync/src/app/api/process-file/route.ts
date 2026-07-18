@@ -137,6 +137,10 @@ export async function POST(request: Request) {
         answer: card.answer,
         difficulty: "medium" as const,
         position: index,
+        ease: 2.5,
+        interval_days: 0,
+        reps: 0,
+        due_at: new Date().toISOString(),
       }))
     );
 
@@ -146,9 +150,10 @@ export async function POST(request: Request) {
       materials.quizzes.map((quiz, index) => ({
         study_id,
         question: quiz.question,
-        options: quiz.options,
+        options: quiz.options?.length ? quiz.options : [],
         correct_answer: quiz.correct_answer,
         explanation: quiz.explanation,
+        quiz_type: quiz.quiz_type ?? "mcq",
         position: index,
       }))
     );

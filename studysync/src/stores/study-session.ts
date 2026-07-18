@@ -3,7 +3,7 @@ import type { FlashcardDifficulty } from "@/types/database";
 
 interface StudySessionState {
   activeStudyId: string | null;
-  activeTab: "notes" | "flashcards" | "quiz" | "mindmap";
+  activeTab: "notes" | "flashcards" | "quiz" | "mindmap" | "chat" | "podcast";
   currentFlashcardIndex: number;
   setActiveStudyId: (id: string | null) => void;
   setActiveTab: (tab: StudySessionState["activeTab"]) => void;
