@@ -1,9 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { Link2, Link2Off, MessageCircle, Layers, ListChecks } from "lucide-react";
+import {
+  Link2,
+  Link2Off,
+  Loader2,
+  MessageCircle,
+  Layers,
+  ListChecks,
+  RotateCcw,
+  Trash2,
+} from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,7 +26,7 @@ import { ProcessingView } from "@/components/study/processing-view";
 import { useStudySessionStore } from "@/stores/study-session";
 import { resolveStudyFilePaths } from "@/lib/studies/files";
 import type { ApiResponse } from "@/types/api";
-import type { StudyWithMaterials } from "@/types/database";
+import type { Study, StudyWithMaterials } from "@/types/database";
 
 type StudyTab =
   | "notes"
@@ -37,11 +46,15 @@ const VALID_TABS: StudyTab[] = [
 ];
 
 export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const setActiveStudyId = useStudySessionStore((s) => s.setActiveStudyId);
   const activeTab = useStudySessionStore((s) => s.activeTab);
   const setActiveTab = useStudySessionStore((s) => s.setActiveTab);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [lifecycleBusy, setLifecycleBusy] = useState<"retry" | "delete" | null>(
+    null
+  );
 
   useEffect(() => {
     setActiveStudyId(study.id);
@@ -75,6 +88,30 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
     setShareUrl(null);
   }
 
+  async function retryStudy() {
+    setLifecycleBusy("retry");
+    const res = await fetch(`/api/studies/${study.id}/retry`, { method: "POST" });
+    const json = (await res.json()) as ApiResponse<Study>;
+    setLifecycleBusy(null);
+    if (json.success) {
+      router.refresh();
+    }
+  }
+
+  async function deleteStudy() {
+    if (!window.confirm(`Delete “${study.title}”? This cannot be undone.`)) {
+      return;
+    }
+    setLifecycleBusy("delete");
+    const res = await fetch(`/api/studies/${study.id}`, { method: "DELETE" });
+    const json = (await res.json()) as ApiResponse<{ deleted: boolean }>;
+    setLifecycleBusy(null);
+    if (json.success) {
+      router.push("/dashboard");
+      router.refresh();
+    }
+  }
+
   if (study.status === "processing") {
     return <ProcessingView study={study} />;
   }
@@ -90,6 +127,33 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
           {study.error_message ||
             "Something went wrong while generating materials."}
         </p>
+        <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+          <Button
+            type="button"
+            onClick={() => void retryStudy()}
+            disabled={lifecycleBusy !== null}
+          >
+            {lifecycleBusy === "retry" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RotateCcw className="h-4 w-4" />
+            )}
+            Retry processing
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void deleteStudy()}
+            disabled={lifecycleBusy !== null}
+          >
+            {lifecycleBusy === "delete" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="h-4 w-4" />
+            )}
+            Delete study
+          </Button>
+        </div>
       </div>
     );
   }

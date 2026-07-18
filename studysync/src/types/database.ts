@@ -16,8 +16,19 @@ export interface Profile {
   uploads_used: number;
   chat_used: number;
   podcasts_used: number;
+  usage_reset_at: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface QuizAttempt {
+  id: string;
+  user_id: string;
+  study_id: string;
+  score: number;
+  total: number;
+  wrong_quiz_ids: string[];
+  created_at: string;
 }
 
 export interface Folder {

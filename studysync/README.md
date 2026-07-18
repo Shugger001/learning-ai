@@ -1,6 +1,6 @@
 # StudySync
 
-Turn lectures (video, PDF, PowerPoint, audio, text) into notes, flashcards, quizzes, and mind maps.
+Turn lectures (video, PDF, PowerPoint, audio, text, YouTube) into notes, flashcards, quizzes, mind maps, chat, and podcasts.
 
 **Stack:** Next.js 14 · TypeScript · Tailwind · Supabase · OpenAI · Zustand · TanStack Query · Framer Motion
 
@@ -28,7 +28,7 @@ OPENAI_API_KEY=sk-...
 ### Apply database migrations
 
 1. First-time: paste `supabase/migrations/20260718140000_init_studysync.sql` in the Supabase SQL Editor.
-2. Then run `supabase/migrations/RUN_PENDING.sql` (quiz count, PowerPoint storage, Turbo parity schema).
+2. Then run `supabase/migrations/RUN_PENDING.sql` (quiz count, PowerPoint, Turbo parity, product depth).
 
 ### Auth providers
 
@@ -59,12 +59,15 @@ Open [http://localhost:3000](http://localhost:3000).
 |------|--------|
 | Premium landing + light/dark theme | ✅ |
 | Email + Google/GitHub OAuth | ✅ |
-| Dashboard + New Study modal (3 steps) | ✅ |
-| PDF / PPTX / video / audio / text upload | ✅ |
-| Quiz + flashcard count pickers | ✅ |
-| `/api/process-file` (extract + generate) | ✅ |
-| Study page: Notes / Flashcards / Quiz / Mind Map | ✅ |
-| Edit + save flashcards & notes | ✅ |
+| Dashboard + folders (create / rename / delete) | ✅ |
+| Multi-file upload + YouTube + in-browser recording | ✅ |
+| Notes (TipTap + KaTeX) / Flashcards + SRS / Quiz + Mind Map | ✅ |
+| Quiz session scores + attempt history | ✅ |
+| Study chat + dual-voice podcasts | ✅ |
+| Public share links (interactive cards + quiz) | ✅ |
+| Study delete + retry failed processing | ✅ |
+| Free plan usage meter (30-day rolling limits) | ✅ |
+| Premade library + pricing / Pro soft limits | ✅ |
 
 ---
 
@@ -74,5 +77,7 @@ Open [http://localhost:3000](http://localhost:3000).
 - `/login`, `/signup` — auth
 - `/dashboard` — studies grid + FAB
 - `/study/[id]` — study workspace
-- `POST /api/studies` — create study (multipart)
+- `/share/[token]` — public interactive share
+- `/library`, `/pricing` — premade packs + plans
+- `POST /api/studies` — create study
 - `POST /api/process-file` — extract + generate

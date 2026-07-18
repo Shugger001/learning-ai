@@ -5,7 +5,7 @@ import {
   generatePodcastScript,
   synthesizePodcastAudio,
 } from "@/lib/ai/generate";
-import { FREE_LIMITS, isPro } from "@/lib/billing/limits";
+import { FREE_LIMITS, ensureUsagePeriod, isPro } from "@/lib/billing/limits";
 import { z } from "zod";
 
 const bodySchema = z.object({ study_id: z.string().uuid() });
@@ -65,11 +65,13 @@ export async function POST(request: Request) {
     return apiError("Server misconfigured", 500);
   }
 
-  const { data: profile } = await admin
+  const { data: rawProfile } = await admin
     .from("profiles")
-    .select("plan, podcasts_used")
+    .select("plan, podcasts_used, usage_reset_at")
     .eq("user_id", user.id)
     .single();
+
+  const profile = await ensureUsagePeriod(admin, user.id, rawProfile);
 
   if (
     profile &&
@@ -77,7 +79,7 @@ export async function POST(request: Request) {
     (profile.podcasts_used ?? 0) >= FREE_LIMITS.podcasts
   ) {
     return apiError(
-      `Free plan podcast limit reached (${FREE_LIMITS.podcasts}). Upgrade to Pro.`,
+      `Free plan podcast limit reached (${FREE_LIMITS.podcasts} / 30 days). Upgrade to Pro.`,
       402
     );
   }

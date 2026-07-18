@@ -4,6 +4,7 @@ import {
   DashboardClient,
   type StudySummary,
 } from "@/components/dashboard/dashboard-client";
+import { remainingUsage } from "@/lib/billing/limits";
 import type { Folder, PlanType, Study } from "@/types/database";
 
 export default async function DashboardPage() {
@@ -20,7 +21,9 @@ export default async function DashboardPage() {
       .order("created_at", { ascending: false }),
     supabase
       .from("profiles")
-      .select("full_name, plan")
+      .select(
+        "full_name, plan, uploads_used, chat_used, podcasts_used, usage_reset_at"
+      )
       .eq("user_id", user!.id)
       .single(),
     supabase
@@ -57,6 +60,8 @@ export default async function DashboardPage() {
     (user?.user_metadata?.full_name as string | undefined) ||
     null;
 
+  const usage = remainingUsage(profile);
+
   return (
     <Suspense fallback={<div className="text-sm text-muted-foreground">Loading…</div>}>
       <DashboardClient
@@ -65,6 +70,7 @@ export default async function DashboardPage() {
         folders={folders}
         dueToday={dueToday}
         plan={(profile?.plan as PlanType) ?? "free"}
+        usage={usage}
         userName={userName}
       />
     </Suspense>

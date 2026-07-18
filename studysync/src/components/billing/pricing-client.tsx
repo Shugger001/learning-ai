@@ -59,15 +59,15 @@ export function PricingClient({ plan }: PricingClientProps) {
           <ul className="mt-6 space-y-2 text-sm">
             <li className="flex gap-2">
               <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-              {FREE_LIMITS.uploads} uploads / month
+              {FREE_LIMITS.uploads} uploads / 30 days
             </li>
             <li className="flex gap-2">
               <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-              {FREE_LIMITS.chat} chat messages
+              {FREE_LIMITS.chat} chat messages / 30 days
             </li>
             <li className="flex gap-2">
               <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-              {FREE_LIMITS.podcasts} podcasts
+              {FREE_LIMITS.podcasts} podcasts / 30 days
             </li>
           </ul>
           <p className="mt-6 text-sm font-medium">

@@ -20,6 +20,8 @@ import { StudyCard } from "@/components/dashboard/study-card";
 import { FolderBar } from "@/components/dashboard/folder-bar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils/cn";
+import { FREE_LIMITS, type UsageRemaining } from "@/lib/billing/limits";
+import type { ApiResponse } from "@/types/api";
 import type { ContentType, Folder, PlanType, Study } from "@/types/database";
 
 export interface StudySummary {
@@ -35,6 +37,7 @@ interface DashboardClientProps {
   folders: Folder[];
   dueToday: number;
   plan: PlanType;
+  usage: UsageRemaining | null;
   userName?: string | null;
 }
 
@@ -88,6 +91,7 @@ export function DashboardClient({
   folders: initialFolders,
   dueToday,
   plan,
+  usage,
   userName,
 }: DashboardClientProps) {
   const router = useRouter();
@@ -164,6 +168,26 @@ export function DashboardClient({
     if (!next) setInitialType(null);
   }
 
+  async function retryFailed(id: string) {
+    const res = await fetch(`/api/studies/${id}/retry`, { method: "POST" });
+    const json = (await res.json()) as ApiResponse<Study>;
+    if (json.success) {
+      setStudies((prev) => prev.map((s) => (s.id === id ? json.data : s)));
+      router.push(`/study/${id}`);
+      router.refresh();
+    }
+  }
+
+  async function deleteFailed(id: string, title: string) {
+    if (!window.confirm(`Delete “${title}”? This cannot be undone.`)) return;
+    const res = await fetch(`/api/studies/${id}`, { method: "DELETE" });
+    const json = (await res.json()) as ApiResponse<{ deleted: boolean }>;
+    if (json.success) {
+      setStudies((prev) => prev.filter((s) => s.id !== id));
+      router.refresh();
+    }
+  }
+
   const primaryCta =
     dueToday > 0 && continueStudy
       ? {
@@ -233,6 +257,16 @@ export function DashboardClient({
                 {plan === "pro" ? "Pro plan" : "Upgrade"}
               </Link>
             </div>
+            {usage ? (
+              <p className="text-xs text-muted-foreground">
+                Free plan · {usage.uploads}/{FREE_LIMITS.uploads} uploads ·{" "}
+                {usage.chat}/{FREE_LIMITS.chat} chat · {usage.podcasts}/
+                {FREE_LIMITS.podcasts} podcasts left
+                {usage.uploads <= 2 || usage.chat <= 5 || usage.podcasts <= 1
+                  ? " — nearing limit"
+                  : ""}
+              </p>
+            ) : null}
           </div>
 
           {studies.length > 0 ? (
@@ -407,7 +441,7 @@ export function DashboardClient({
                 {failedStudies.map((study) => (
                   <li
                     key={study.id}
-                    className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between"
+                    className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{study.title}</p>
@@ -415,9 +449,28 @@ export function DashboardClient({
                         {study.error_message || "Processing failed"}
                       </p>
                     </div>
-                    <Button asChild variant="outline" size="sm">
-                      <Link href={`/study/${study.id}`}>View</Link>
-                    </Button>
+                    <div className="flex shrink-0 gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void retryFailed(study.id)}
+                      >
+                        Retry
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive"
+                        onClick={() => void deleteFailed(study.id, study.title)}
+                      >
+                        Delete
+                      </Button>
+                      <Button asChild variant="outline" size="sm">
+                        <Link href={`/study/${study.id}`}>View</Link>
+                      </Button>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -484,6 +537,14 @@ export function DashboardClient({
                     <StudyCard
                       study={study}
                       summary={summaryByStudy.get(study.id)}
+                      onDeleted={(id) =>
+                        setStudies((prev) => prev.filter((s) => s.id !== id))
+                      }
+                      onRetried={(next) =>
+                        setStudies((prev) =>
+                          prev.map((s) => (s.id === next.id ? next : s))
+                        )
+                      }
                     />
                   </motion.li>
                 ))}

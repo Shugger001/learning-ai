@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { chatMessageSchema } from "@/lib/validations/study";
 import { chatAboutStudy } from "@/lib/ai/generate";
-import { FREE_LIMITS, isPro } from "@/lib/billing/limits";
+import { FREE_LIMITS, ensureUsagePeriod, isPro } from "@/lib/billing/limits";
 
 export async function GET(request: Request) {
   const supabase = createClient();
@@ -62,11 +62,13 @@ export async function POST(request: Request) {
     return apiError("Server misconfigured", 500);
   }
 
-  const { data: profile } = await admin
+  const { data: rawProfile } = await admin
     .from("profiles")
-    .select("plan, chat_used")
+    .select("plan, chat_used, usage_reset_at")
     .eq("user_id", user.id)
     .single();
+
+  const profile = await ensureUsagePeriod(admin, user.id, rawProfile);
 
   if (
     profile &&
@@ -74,7 +76,7 @@ export async function POST(request: Request) {
     (profile.chat_used ?? 0) >= FREE_LIMITS.chat
   ) {
     return apiError(
-      `Free plan chat limit reached (${FREE_LIMITS.chat}). Upgrade to Pro.`,
+      `Free plan chat limit reached (${FREE_LIMITS.chat} / 30 days). Upgrade to Pro.`,
       402
     );
   }

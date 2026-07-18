@@ -365,18 +365,68 @@ Host B: Great summary. Review your flashcards next!`;
 
 export async function synthesizePodcastAudio(script: string): Promise<Buffer> {
   const openai = getOpenAI();
-  const spoken = script
-    .replace(/^Host A:\s*/gm, "")
-    .replace(/^Host B:\s*/gm, "")
-    .slice(0, 4000);
+  const segments = parsePodcastSegments(script);
 
-  const response = await openai.audio.speech.create({
-    model: "tts-1",
-    voice: "alloy",
-    input: spoken || "Welcome to your StudySync podcast review.",
-  });
+  if (segments.length === 0) {
+    const response = await openai.audio.speech.create({
+      model: "tts-1",
+      voice: "alloy",
+      input: "Welcome to your StudySync podcast review.",
+    });
+    return Buffer.from(await response.arrayBuffer());
+  }
 
-  return Buffer.from(await response.arrayBuffer());
+  if (segments.length === 1) {
+    const response = await openai.audio.speech.create({
+      model: "tts-1",
+      voice: segments[0].host === "B" ? "onyx" : "alloy",
+      input: segments[0].text.slice(0, 4000),
+    });
+    return Buffer.from(await response.arrayBuffer());
+  }
+
+  const parts: Buffer[] = [];
+  for (const segment of segments) {
+    const response = await openai.audio.speech.create({
+      model: "tts-1",
+      voice: segment.host === "B" ? "onyx" : "alloy",
+      input: segment.text.slice(0, 4000),
+    });
+    parts.push(Buffer.from(await response.arrayBuffer()));
+  }
+
+  // OpenAI TTS returns MP3; concatenating frames is usually playable.
+  return Buffer.concat(parts);
+}
+
+function parsePodcastSegments(
+  script: string
+): { host: "A" | "B"; text: string }[] {
+  const lines = script.split(/\r?\n/);
+  const segments: { host: "A" | "B"; text: string }[] = [];
+  let current: { host: "A" | "B"; text: string } | null = null;
+
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) continue;
+    const match = /^(?:Host\s*)?([AB])\s*:\s*(.*)$/i.exec(line);
+    if (match) {
+      if (current?.text.trim()) segments.push(current);
+      current = {
+        host: match[1].toUpperCase() as "A" | "B",
+        text: match[2].trim(),
+      };
+      continue;
+    }
+    if (current) {
+      current.text = `${current.text} ${line}`.trim();
+    } else {
+      current = { host: "A", text: line };
+    }
+  }
+  if (current?.text.trim()) segments.push(current);
+
+  return segments.filter((s) => s.text.length > 0);
 }
 
 export async function chatAboutStudy(params: {

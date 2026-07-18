@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { createStudySchema } from "@/lib/validations/study";
 import { fetchYouTubeTranscript } from "@/lib/ai/youtube";
-import { FREE_LIMITS, isPro } from "@/lib/billing/limits";
+import { FREE_LIMITS, ensureUsagePeriod, isPro } from "@/lib/billing/limits";
 import { encodeStudyFilePaths } from "@/lib/studies/files";
 
 export const maxDuration = 60;
@@ -106,11 +106,13 @@ export async function POST(request: Request) {
     );
   }
 
-  const { data: profile } = await admin
+  const { data: rawProfile } = await admin
     .from("profiles")
-    .select("plan, uploads_used")
+    .select("plan, uploads_used, usage_reset_at")
     .eq("user_id", user.id)
     .maybeSingle();
+
+  const profile = await ensureUsagePeriod(admin, user.id, rawProfile);
 
   if (
     profile &&
@@ -118,7 +120,7 @@ export async function POST(request: Request) {
     (profile.uploads_used ?? 0) >= FREE_LIMITS.uploads
   ) {
     return apiError(
-      `Free plan limit reached (${FREE_LIMITS.uploads} uploads). Upgrade to Pro for unlimited studies.`,
+      `Free plan limit reached (${FREE_LIMITS.uploads} uploads / 30 days). Upgrade to Pro for unlimited studies.`,
       402
     );
   }

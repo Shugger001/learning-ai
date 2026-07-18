@@ -1,7 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { FolderPlus, Folder as FolderIcon, Settings2 } from "lucide-react";
+import {
+  FolderPlus,
+  Folder as FolderIcon,
+  Pencil,
+  Settings2,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils/cn";
@@ -29,6 +35,9 @@ export function FolderBar({
   const [name, setName] = useState("");
   const [creating, setCreating] = useState(false);
   const [assignStudyId, setAssignStudyId] = useState<string>("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   async function createFolder() {
     if (!name.trim()) return;
@@ -57,6 +66,40 @@ export function FolderBar({
     if (json.success) {
       onStudyMoved(json.data);
       setAssignStudyId("");
+    }
+  }
+
+  async function renameFolder(id: string) {
+    if (!editName.trim()) return;
+    setBusyId(id);
+    const res = await fetch("/api/folders", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, name: editName.trim() }),
+    });
+    const json = (await res.json()) as ApiResponse<Folder>;
+    setBusyId(null);
+    if (json.success) {
+      onFoldersChange(folders.map((f) => (f.id === id ? json.data : f)));
+      setEditingId(null);
+    }
+  }
+
+  async function deleteFolder(folder: Folder) {
+    if (
+      !window.confirm(
+        `Delete folder “${folder.name}”? Studies move back to All.`
+      )
+    ) {
+      return;
+    }
+    setBusyId(folder.id);
+    const res = await fetch(`/api/folders?id=${folder.id}`, { method: "DELETE" });
+    const json = (await res.json()) as ApiResponse<{ deleted: boolean }>;
+    setBusyId(null);
+    if (json.success) {
+      onFoldersChange(folders.filter((f) => f.id !== folder.id));
+      if (selectedFolderId === folder.id) onSelectFolder(null);
     }
   }
 
@@ -126,6 +169,76 @@ export function FolderBar({
               Add
             </Button>
           </div>
+
+          {folders.length > 0 ? (
+            <ul className="space-y-2 border-t border-border/60 pt-3">
+              {folders.map((folder) => (
+                <li
+                  key={folder.id}
+                  className="flex flex-wrap items-center gap-2"
+                >
+                  {editingId === folder.id ? (
+                    <>
+                      <Input
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        className="h-8 w-40 sm:w-48"
+                        aria-label={`Rename ${folder.name}`}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={busyId === folder.id || !editName.trim()}
+                        onClick={() => void renameFolder(folder.id)}
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setEditingId(null)}
+                      >
+                        Cancel
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                        {folder.name}
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        disabled={busyId === folder.id}
+                        onClick={() => {
+                          setEditingId(folder.id);
+                          setEditName(folder.name);
+                        }}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                        Rename
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive"
+                        disabled={busyId === folder.id}
+                        onClick={() => void deleteFolder(folder)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Delete
+                      </Button>
+                    </>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
           {studies.length > 0 && folders.length > 0 ? (
             <div className="flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
               <select

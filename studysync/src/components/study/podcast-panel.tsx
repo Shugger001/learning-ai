@@ -49,7 +49,7 @@ export function PodcastPanel({
           Study podcast
         </h2>
         <p className="text-sm text-muted-foreground">
-          Turn this pack into a two-host audio review you can play anywhere.
+          Two hosts (distinct voices) summarize this pack for commute review.
         </p>
       </div>
 
@@ -85,12 +85,17 @@ export function PodcastPanel({
           </div>
 
           {podcast.audio_url ? (
-            <audio controls className="w-full" src={podcast.audio_url}>
-              Your browser does not support audio.
-            </audio>
+            <>
+              <p className="text-xs text-muted-foreground">
+                Dual-voice audio (Host A / Host B)
+              </p>
+              <audio controls className="w-full" src={podcast.audio_url}>
+                Your browser does not support audio.
+              </audio>
+            </>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Script ready. Add OPENAI_API_KEY to enable TTS audio.
+              Script ready. Add OPENAI_API_KEY to enable dual-voice TTS audio.
             </p>
           )}
 
