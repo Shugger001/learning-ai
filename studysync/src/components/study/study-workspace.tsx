@@ -47,7 +47,9 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
         <Badge variant="secondary" className="capitalize">
           {study.content_type}
         </Badge>
-        <h1 className="text-3xl font-semibold tracking-tight">{study.title}</h1>
+        <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+          {study.title}
+        </h1>
       </div>
 
       <Tabs

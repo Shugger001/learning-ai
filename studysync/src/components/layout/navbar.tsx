@@ -31,11 +31,11 @@ export function Navbar({ userEmail, userName }: NavbarProps) {
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md">
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
+    <header className="sticky top-0 z-40 border-b border-border/50 bg-background/75 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         <Link
           href="/dashboard"
-          className="text-lg font-semibold tracking-tight"
+          className="font-display text-lg font-semibold tracking-tight"
           aria-label="StudySync home"
         >
           StudySync
@@ -53,7 +53,7 @@ export function Navbar({ userEmail, userName }: NavbarProps) {
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
                   <p className="text-sm font-medium">{userName || "Student"}</p>
-                  <p className="text-xs text-muted-foreground truncate">
+                  <p className="truncate text-xs text-muted-foreground">
                     {userEmail}
                   </p>
                 </div>

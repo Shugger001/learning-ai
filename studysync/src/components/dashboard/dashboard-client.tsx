@@ -13,11 +13,13 @@ export function DashboardClient({ studies }: { studies: Study[] }) {
 
   return (
     <>
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Your studies</h1>
-          <p className="mt-1 text-muted-foreground">
-            Upload a lecture and get notes, flashcards, quizzes, and a mind map.
+          <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+            Your studies
+          </h1>
+          <p className="mt-2 max-w-md text-muted-foreground">
+            Every upload becomes a pack of notes, flashcards, and quizzes.
           </p>
         </div>
         <Button onClick={() => setOpen(true)} aria-label="Create new study">
@@ -28,15 +30,18 @@ export function DashboardClient({ studies }: { studies: Study[] }) {
 
       {studies.length === 0 ? (
         <motion.div
-          initial={{ opacity: 0, y: 8 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col items-center justify-center rounded-xl border border-dashed px-6 py-20 text-center"
+          className="flex flex-col items-center justify-center border border-dashed border-border/80 px-6 py-24 text-center"
         >
-          <h2 className="text-lg font-medium">No studies yet</h2>
-          <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-            Drop a PDF or lecture video to generate your first active-recall pack.
+          <h2 className="font-display text-xl font-semibold tracking-tight">
+            Begin with one lecture
+          </h2>
+          <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
+            Upload a PDF, PowerPoint, or video and StudySync will build your
+            first active-recall pack.
           </p>
-          <Button className="mt-6" onClick={() => setOpen(true)}>
+          <Button className="mt-8" onClick={() => setOpen(true)}>
             <Plus className="h-4 w-4" />
             New Study
           </Button>
@@ -47,7 +52,7 @@ export function DashboardClient({ studies }: { studies: Study[] }) {
           animate="show"
           variants={{
             hidden: {},
-            show: { transition: { staggerChildren: 0.05 } },
+            show: { transition: { staggerChildren: 0.06 } },
           }}
           className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
         >
@@ -55,7 +60,7 @@ export function DashboardClient({ studies }: { studies: Study[] }) {
             <motion.li
               key={study.id}
               variants={{
-                hidden: { opacity: 0, y: 10 },
+                hidden: { opacity: 0, y: 12 },
                 show: { opacity: 1, y: 0 },
               }}
             >
@@ -68,7 +73,7 @@ export function DashboardClient({ studies }: { studies: Study[] }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-6 right-6 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="fixed bottom-6 right-6 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground transition hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         aria-label="New Study"
       >
         <Plus className="h-6 w-6" />

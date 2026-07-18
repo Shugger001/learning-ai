@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { FileAudio, FileText, Type, Video } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ContentType, Study, StudyStatus } from "@/types/database";
 
 const ICONS: Record<ContentType, React.ComponentType<{ className?: string }>> = {
@@ -28,30 +27,28 @@ export function StudyCard({ study }: { study: Study }) {
 
   return (
     <Link href={`/study/${study.id}`} className="group block h-full">
-      <Card className="h-full border-border/60 transition-colors group-hover:border-foreground/30 group-hover:bg-accent/30">
-        <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-muted">
+      <article className="flex h-full flex-col border border-border/70 bg-card/60 p-5 transition-colors duration-200 group-hover:border-primary/35 group-hover:bg-accent/40">
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div className="flex h-9 w-9 items-center justify-center border border-border/60 bg-muted/50 text-muted-foreground">
             <Icon className="h-4 w-4" aria-hidden />
           </div>
           <Badge variant={statusVariant(study.status)} className="capitalize">
             {study.status}
           </Badge>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <CardTitle className="line-clamp-2 text-base font-semibold leading-snug">
-            {study.title}
-          </CardTitle>
-          <p className="text-xs text-muted-foreground">
-            {new Date(study.created_at).toLocaleDateString(undefined, {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-            })}
-            {" · "}
-            <span className="capitalize">{kindLabel}</span>
-          </p>
-        </CardContent>
-      </Card>
+        </div>
+        <h2 className="font-display line-clamp-2 text-lg font-semibold leading-snug tracking-tight">
+          {study.title}
+        </h2>
+        <p className="mt-auto pt-4 text-xs text-muted-foreground">
+          {new Date(study.created_at).toLocaleDateString(undefined, {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })}
+          {" · "}
+          <span className="capitalize">{kindLabel}</span>
+        </p>
+      </article>
     </Link>
   );
 }
