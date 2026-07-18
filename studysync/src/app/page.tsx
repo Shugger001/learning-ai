@@ -5,21 +5,21 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/layout/theme-toggle";
 
 const HERO_IMAGE =
   "https://images.unsplash.com/photo-1456513080880-7d93aaa2daf8?auto=format&fit=crop&w=2400&q=80";
 
+const EASE = [0.22, 1, 0.36, 1] as const;
+
 export default function LandingPage() {
   return (
     <div className="relative min-h-screen">
-      {/* Full-bleed hero composition */}
       <section className="relative isolate min-h-[100svh] overflow-hidden">
         <motion.div
           className="absolute inset-0"
           initial={{ scale: 1.04 }}
           animate={{ scale: 1 }}
-          transition={{ duration: 1.4, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 1.4, ease: EASE }}
         >
           <Image
             src={HERO_IMAGE}
@@ -37,7 +37,6 @@ export default function LandingPage() {
             StudySync
           </span>
           <div className="flex items-center gap-2">
-            <ThemeToggle className="border-white/20 bg-white/10 text-white hover:bg-white/20" />
             <Button
               asChild
               variant="ghost"
@@ -61,7 +60,7 @@ export default function LandingPage() {
             className="max-w-2xl space-y-6"
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.8, delay: 0.15, ease: EASE }}
           >
             <p className="font-display text-5xl font-semibold leading-[0.95] tracking-tight text-white sm:text-7xl md:text-8xl">
               StudySync
@@ -70,14 +69,14 @@ export default function LandingPage() {
               Lectures become lasting memory.
             </h1>
             <p className="max-w-md text-base leading-relaxed text-white/70 sm:text-lg">
-              Drop a video, PDF, or deck. Walk away with notes, flashcards, and
-              quizzes built for active recall.
+              Upload, record, or paste a YouTube link—then study with notes,
+              flashcards, chat, and podcasts built for active recall.
             </p>
             <motion.div
               className="flex flex-wrap gap-3 pt-2"
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.35 }}
+              transition={{ duration: 0.6, delay: 0.35, ease: EASE }}
             >
               <Button
                 asChild
@@ -102,14 +101,13 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* One job: what you get */}
       <section className="mx-auto max-w-6xl px-4 py-24 sm:px-6 sm:py-32">
         <motion.div
           className="max-w-xl"
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-80px" }}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.6, ease: EASE }}
         >
           <h2 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
             From lecture to practice in one pass
@@ -124,18 +122,18 @@ export default function LandingPage() {
           {[
             {
               step: "01",
-              title: "Upload once",
-              body: "Video, PDF, PowerPoint, audio, or pasted text—ingested and cleaned automatically.",
+              title: "Capture once",
+              body: "YouTube, live recording, PDF, slides, video, or text—ingested and cleaned automatically.",
             },
             {
               step: "02",
               title: "Get a study pack",
-              body: "Polished notes, flashcards, quizzes, and a mind map shaped around your material.",
+              body: "Notes, flashcards, quizzes, mind map, chat, and an optional podcast from the same material.",
             },
             {
               step: "03",
               title: "Practice deeply",
-              body: "Flip cards, run quizzes, and edit anything so your deck stays accurate.",
+              body: "Spaced recall, mixed quiz types, and edit anything so your deck stays accurate.",
             },
           ].map((item, i) => (
             <motion.li
@@ -144,7 +142,7 @@ export default function LandingPage() {
               initial={{ opacity: 0, y: 18 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-40px" }}
-              transition={{ duration: 0.5, delay: i * 0.08 }}
+              transition={{ duration: 0.5, delay: i * 0.08, ease: EASE }}
             >
               <span className="font-display text-sm font-semibold text-primary">
                 {item.step}
@@ -160,14 +158,97 @@ export default function LandingPage() {
         </ol>
       </section>
 
+      {/* Full-bleed product proof — not a card grid */}
+      <section className="relative overflow-hidden border-y border-border/70 bg-[hsl(222_47%_7%)] text-white">
+        <div
+          className="pointer-events-none absolute inset-0 opacity-60"
+          aria-hidden
+          style={{
+            background:
+              "radial-gradient(ellipse 70% 80% at 80% 20%, hsl(174 48% 32% / 0.35), transparent 55%), radial-gradient(ellipse 50% 60% at 10% 90%, hsl(210 40% 40% / 0.2), transparent 50%)",
+          }}
+        />
+        <div className="relative mx-auto grid max-w-6xl gap-10 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:items-center lg:gap-16 lg:py-28">
+          <motion.div
+            className="space-y-4"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.65, ease: EASE }}
+          >
+            <p className="text-sm font-medium text-[hsl(174_45%_62%)]">
+              Inside a study
+            </p>
+            <h2 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+              Review cards. Ask the material. Listen on the go.
+            </h2>
+            <p className="max-w-md text-[15px] leading-relaxed text-white/65">
+              One workspace for notes, spaced flashcards, quizzes, chat, and
+              podcasts—so the next action is always obvious.
+            </p>
+          </motion.div>
+
+          <motion.div
+            className="relative"
+            initial={{ opacity: 0, y: 28 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.7, delay: 0.1, ease: EASE }}
+          >
+            <div className="border border-white/15 bg-white/[0.04] p-5 backdrop-blur-sm sm:p-7">
+              <div className="mb-5 flex gap-2 text-xs font-medium tracking-wide text-white/50">
+                {["Notes", "Flashcards", "Quiz", "Chat"].map((tab, i) => (
+                  <span
+                    key={tab}
+                    className={
+                      i === 1
+                        ? "border-b border-[hsl(174_45%_55%)] pb-1 text-white"
+                        : "pb-1"
+                    }
+                  >
+                    {tab}
+                  </span>
+                ))}
+              </div>
+              <div className="mx-auto flex min-h-[11rem] max-w-sm flex-col items-center justify-center border border-white/20 bg-[hsl(222_40%_10%)] px-6 py-10 text-center shadow-[0_24px_60px_-20px_rgba(0,0,0,0.55)]">
+                <p className="text-xs uppercase tracking-wider text-white/40">
+                  Front
+                </p>
+                <p className="font-display mt-3 text-lg font-semibold leading-snug tracking-tight sm:text-xl">
+                  What causes the American Revolution?
+                </p>
+                <p className="mt-6 text-xs text-white/45">Tap to reveal</p>
+              </div>
+              <div className="mt-5 flex justify-center gap-2">
+                {["Again", "Hard", "Good", "Easy"].map((label, i) => (
+                  <span
+                    key={label}
+                    className={
+                      i >= 2
+                        ? "border border-[hsl(174_45%_45%)] px-2.5 py-1 text-xs text-[hsl(174_45%_72%)]"
+                        : "border border-white/15 px-2.5 py-1 text-xs text-white/45"
+                    }
+                  >
+                    {label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
       <footer className="border-t border-border/70">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-8 sm:px-6">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-8 sm:px-6">
           <span className="font-display text-sm font-semibold tracking-tight">
             StudySync
           </span>
-          <p className="text-sm text-muted-foreground">
-            Built for lasting recall
-          </p>
+          <div className="flex items-center gap-6 text-sm text-muted-foreground">
+            <Link href="/pricing" className="hover:text-foreground">
+              Pricing
+            </Link>
+            <span className="hidden sm:inline">Built for lasting recall</span>
+          </div>
         </div>
       </footer>
     </div>

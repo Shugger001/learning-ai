@@ -23,17 +23,18 @@ export function FlashcardsPanel({ flashcards: initial }: FlashcardsPanelProps) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const queue = useMemo(() => {
-    if (!dueOnly) return cards;
-    const now = Date.now();
-    const due = cards.filter((c) => new Date(c.due_at || 0).getTime() <= now);
-    return due.length ? due : cards;
-  }, [cards, dueOnly]);
-
   const dueCount = useMemo(() => {
     const now = Date.now();
     return cards.filter((c) => new Date(c.due_at || 0).getTime() <= now).length;
   }, [cards]);
+
+  const dueCards = useMemo(() => {
+    const now = Date.now();
+    return cards.filter((c) => new Date(c.due_at || 0).getTime() <= now);
+  }, [cards]);
+
+  const queue = dueOnly ? dueCards : cards;
+  const caughtUp = dueOnly && dueCards.length === 0 && cards.length > 0;
 
   if (cards.length === 0) {
     return (
@@ -41,7 +42,30 @@ export function FlashcardsPanel({ flashcards: initial }: FlashcardsPanelProps) {
     );
   }
 
-  const safeIndex = Math.min(index, queue.length - 1);
+  if (caughtUp) {
+    return (
+      <div className="mx-auto max-w-md space-y-4 py-10 text-center">
+        <p className="font-display text-2xl font-semibold tracking-tight">
+          All caught up
+        </p>
+        <p className="text-sm text-muted-foreground">
+          No cards due right now. Browse the full deck or come back later.
+        </p>
+        <Button
+          type="button"
+          onClick={() => {
+            setDueOnly(false);
+            setIndex(0);
+            setFlipped(false);
+          }}
+        >
+          Show all cards
+        </Button>
+      </div>
+    );
+  }
+
+  const safeIndex = Math.min(index, Math.max(0, queue.length - 1));
   const card = queue[safeIndex];
 
   async function rate(srs_rating: SrsRating) {
@@ -96,23 +120,23 @@ export function FlashcardsPanel({ flashcards: initial }: FlashcardsPanelProps) {
 
       <button
         type="button"
-        className="relative w-full [perspective:1200px]"
+        className="relative w-full [perspective:1400px]"
         onClick={() => !editing && setFlipped((f) => !f)}
         aria-label={flipped ? "Show question" : "Flip to answer"}
       >
         <motion.div
-          className="relative min-h-[220px] w-full border bg-card p-8 text-left [transform-style:preserve-3d]"
-          animate={{ rotateY: flipped ? 180 : 0 }}
-          transition={{ duration: 0.45 }}
+          className="relative min-h-[280px] w-full border border-border/70 bg-card p-8 text-left shadow-[0_20px_50px_-28px_rgba(15,23,42,0.45)] [transform-style:preserve-3d] sm:min-h-[320px]"
+          animate={{ rotateY: flipped ? 180 : 0, scale: flipped ? 1.02 : 1 }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         >
           <div
             className={cn(
-              "absolute inset-0 flex flex-col justify-center p-8",
+              "absolute inset-0 flex flex-col justify-center p-8 sm:p-10",
               flipped && "pointer-events-none"
             )}
             style={{ backfaceVisibility: "hidden" }}
           >
-            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Question
             </p>
             {editing ? (
@@ -126,20 +150,25 @@ export function FlashcardsPanel({ flashcards: initial }: FlashcardsPanelProps) {
                     )
                   )
                 }
-                className="min-h-[120px]"
+                className="min-h-[140px]"
               />
             ) : (
-              <p className="text-lg font-medium leading-relaxed">{card.question}</p>
+              <p className="font-display text-xl font-semibold leading-snug tracking-tight sm:text-2xl">
+                {card.question}
+              </p>
             )}
+            {!editing ? (
+              <p className="mt-8 text-xs text-muted-foreground">Tap to reveal</p>
+            ) : null}
           </div>
           <div
-            className="absolute inset-0 flex flex-col justify-center p-8"
+            className="absolute inset-0 flex flex-col justify-center p-8 sm:p-10"
             style={{
               backfaceVisibility: "hidden",
               transform: "rotateY(180deg)",
             }}
           >
-            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Answer
             </p>
             {editing ? (
@@ -153,10 +182,10 @@ export function FlashcardsPanel({ flashcards: initial }: FlashcardsPanelProps) {
                     )
                   )
                 }
-                className="min-h-[120px]"
+                className="min-h-[140px]"
               />
             ) : (
-              <p className="text-lg leading-relaxed">{card.answer}</p>
+              <p className="text-lg leading-relaxed sm:text-xl">{card.answer}</p>
             )}
           </div>
         </motion.div>
@@ -175,18 +204,36 @@ export function FlashcardsPanel({ flashcards: initial }: FlashcardsPanelProps) {
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        {(["again", "hard", "good", "easy"] as const).map((r) => (
-          <Button
-            key={r}
-            type="button"
-            variant="outline"
-            size="sm"
-            className="capitalize"
-            onClick={() => void rate(r)}
-          >
-            {r}
-          </Button>
-        ))}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="border-destructive/40 text-destructive hover:bg-destructive/10"
+          onClick={() => void rate("again")}
+        >
+          Again
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground"
+          onClick={() => void rate("hard")}
+        >
+          Hard
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="border-primary/50 text-primary"
+          onClick={() => void rate("good")}
+        >
+          Good
+        </Button>
+        <Button type="button" size="sm" onClick={() => void rate("easy")}>
+          Easy
+        </Button>
         <Button
           type="button"
           variant="outline"

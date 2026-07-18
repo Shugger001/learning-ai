@@ -28,6 +28,7 @@ export function QuizPanel({ studyId, quizzes: initial }: QuizPanelProps) {
   const isCorrect =
     answered &&
     selected?.trim().toLowerCase() === quiz.correct_answer.trim().toLowerCase();
+  const atEnd = answered && index === quizzes.length - 1;
 
   const progress = useMemo(() => {
     if (!quizzes.length) return 0;
@@ -73,30 +74,23 @@ export function QuizPanel({ studyId, quizzes: initial }: QuizPanelProps) {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
-        <span>
+      <div className="flex items-center justify-between gap-3 text-sm">
+        <span className="text-muted-foreground">
           Question {index + 1} of {quizzes.length}
-          <span className="ml-2 uppercase tracking-wide text-xs">
-            {type.replace("_", " ")}
-          </span>
         </span>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => void generateMore()}
-          disabled={loading}
-        >
-          {loading ? <Loader2 className="animate-spin" /> : null}
-          More practice
-        </Button>
+        <span className="rounded-sm border border-border/70 bg-muted/40 px-2 py-0.5 text-xs font-medium uppercase tracking-wide text-foreground/80">
+          {type.replace("_", " ")}
+        </span>
       </div>
 
-      <div className="h-1 w-full overflow-hidden bg-muted">
-        <div className="h-full bg-primary transition-all" style={{ width: `${progress}%` }} />
+      <div className="h-1.5 w-full overflow-hidden bg-muted">
+        <div
+          className="h-full bg-primary transition-all duration-300"
+          style={{ width: `${progress}%` }}
+        />
       </div>
 
-      <h2 className="font-display text-xl font-semibold leading-snug">
+      <h2 className="font-display text-xl font-semibold leading-snug tracking-tight sm:text-2xl">
         {quiz.question}
       </h2>
 
@@ -117,8 +111,10 @@ export function QuizPanel({ studyId, quizzes: initial }: QuizPanelProps) {
                   className={cn(
                     "w-full border px-4 py-3 text-left text-sm transition-colors",
                     !answered && "hover:bg-accent",
-                    showCorrect && "border-success bg-success/10",
-                    showWrong && "border-destructive bg-destructive/10"
+                    showCorrect &&
+                      "border-success bg-success/15 font-medium text-foreground",
+                    showWrong &&
+                      "border-destructive bg-destructive/15 text-foreground"
                   )}
                 >
                   {option}
@@ -151,12 +147,19 @@ export function QuizPanel({ studyId, quizzes: initial }: QuizPanelProps) {
           className={cn(
             "border px-4 py-3 text-sm",
             isCorrect
-              ? "border-success/40 bg-success/5"
-              : "border-destructive/40 bg-destructive/5"
+              ? "border-success/50 bg-success/10"
+              : "border-destructive/50 bg-destructive/10"
           )}
           role="status"
         >
-          <p className="font-medium">{isCorrect ? "Correct" : "Not quite"}</p>
+          <p
+            className={cn(
+              "font-semibold",
+              isCorrect ? "text-success" : "text-destructive"
+            )}
+          >
+            {isCorrect ? "Correct" : "Not quite"}
+          </p>
           {!isCorrect ? (
             <p className="mt-1 text-muted-foreground">
               Model answer: {quiz.correct_answer}
@@ -174,7 +177,7 @@ export function QuizPanel({ studyId, quizzes: initial }: QuizPanelProps) {
         </p>
       ) : null}
 
-      <div className="flex justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <Button
           type="button"
           variant="outline"
@@ -187,17 +190,30 @@ export function QuizPanel({ studyId, quizzes: initial }: QuizPanelProps) {
         >
           Previous
         </Button>
-        <Button
-          type="button"
-          onClick={() => {
-            setSelected(null);
-            setTyped("");
-            setIndex((i) => Math.min(quizzes.length - 1, i + 1));
-          }}
-          disabled={!answered || index === quizzes.length - 1}
-        >
-          Next question
-        </Button>
+        <div className="flex gap-2">
+          {atEnd ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void generateMore()}
+              disabled={loading}
+            >
+              {loading ? <Loader2 className="animate-spin" /> : null}
+              More practice
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            onClick={() => {
+              setSelected(null);
+              setTyped("");
+              setIndex((i) => Math.min(quizzes.length - 1, i + 1));
+            }}
+            disabled={!answered || index === quizzes.length - 1}
+          >
+            Next question
+          </Button>
+        </div>
       </div>
     </div>
   );

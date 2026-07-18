@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -77,7 +78,13 @@ export default async function StudyPage({ params }: PageProps) {
             Dashboard
           </Link>
         </Button>
-        <StudyWorkspace study={materials} />
+        <Suspense
+          fallback={
+            <div className="text-sm text-muted-foreground">Loading…</div>
+          }
+        >
+          <StudyWorkspace study={materials} />
+        </Suspense>
       </main>
     </div>
   );

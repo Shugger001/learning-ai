@@ -8,6 +8,12 @@ import { Textarea } from "@/components/ui/textarea";
 import type { ApiResponse } from "@/types/api";
 import type { ChatMessage } from "@/types/database";
 
+const SUGGESTIONS = [
+  "Explain the main idea in simple terms",
+  "What should I memorize for a quiz?",
+  "Give me a practice question with the answer",
+];
+
 export function ChatPanel({ studyId }: { studyId: string }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -27,9 +33,9 @@ export function ChatPanel({ studyId }: { studyId: string }) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  async function send() {
-    if (!input.trim() || loading) return;
-    const question = input.trim();
+  async function send(questionOverride?: string) {
+    const question = (questionOverride ?? input).trim();
+    if (!question || loading) return;
     setInput("");
     setLoading(true);
     setError(null);
@@ -63,10 +69,24 @@ export function ChatPanel({ studyId }: { studyId: string }) {
     <div className="flex h-[min(70vh,640px)] flex-col border border-border/70 bg-card/40">
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
         {messages.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Ask anything about this study — concepts, definitions, or practice
-            explanations.
-          </p>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Ask anything about this study — concepts, definitions, or practice
+              explanations.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {SUGGESTIONS.map((prompt) => (
+                <button
+                  key={prompt}
+                  type="button"
+                  onClick={() => void send(prompt)}
+                  className="border border-border/70 px-3 py-1.5 text-left text-xs text-foreground/80 transition-colors hover:border-primary/40 hover:bg-accent/40"
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
+          </div>
         ) : null}
         {messages.map((m) => (
           <div

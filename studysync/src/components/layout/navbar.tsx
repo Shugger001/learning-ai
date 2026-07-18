@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LogOut } from "lucide-react";
+import { LogOut, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,12 @@ export function Navbar({ userEmail, userName }: NavbarProps) {
         </Link>
 
         <div className="flex items-center gap-2">
+          <Button asChild size="sm" className="shrink-0">
+            <Link href="/dashboard?new=1">
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">New study</span>
+            </Link>
+          </Button>
           <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
             <Link href="/library">Library</Link>
           </Button>
@@ -65,6 +71,9 @@ export function Navbar({ userEmail, userName }: NavbarProps) {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+              <DropdownMenuItem asChild className="cursor-pointer sm:hidden">
+                <Link href="/dashboard?new=1">New study</Link>
+              </DropdownMenuItem>
               <DropdownMenuItem asChild className="cursor-pointer">
                 <Link href="/library">Premade library</Link>
               </DropdownMenuItem>

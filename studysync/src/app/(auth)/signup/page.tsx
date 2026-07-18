@@ -1,11 +1,16 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
+import { motion } from "framer-motion";
 import { EmailAuthForm } from "@/components/auth/email-auth-form";
 import { OAuthButtons } from "@/components/auth/oauth-buttons";
 import { Separator } from "@/components/ui/separator";
 
 const SIDE_IMAGE =
   "https://images.unsplash.com/photo-1456513080880-7d93aaa2daf8?auto=format&fit=crop&w=1600&q=80";
+
+const EASE = [0.22, 1, 0.36, 1] as const;
 
 export default function SignupPage() {
   return (
@@ -31,9 +36,14 @@ export default function SignupPage() {
       </div>
 
       <div className="flex items-center justify-center px-4 py-12 sm:px-8">
-        <div className="w-full max-w-md space-y-8">
-          <div className="space-y-2 lg:space-y-3">
-            <p className="font-display text-sm font-semibold tracking-tight text-primary lg:hidden">
+        <motion.div
+          className="w-full max-w-md space-y-8"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.65, ease: EASE }}
+        >
+          <div className="space-y-3">
+            <p className="font-display text-3xl font-semibold tracking-tight text-foreground lg:hidden">
               StudySync
             </p>
             <h1 className="font-display text-3xl font-semibold tracking-tight">
@@ -63,7 +73,7 @@ export default function SignupPage() {
               </Link>
             </p>
           </div>
-        </div>
+        </motion.div>
       </div>
     </main>
   );

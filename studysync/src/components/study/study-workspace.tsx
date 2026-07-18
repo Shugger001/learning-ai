@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { Link2, Link2Off } from "lucide-react";
+import { Link2, Link2Off, MessageCircle, Layers, ListChecks } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,25 @@ import { useStudySessionStore } from "@/stores/study-session";
 import type { ApiResponse } from "@/types/api";
 import type { StudyWithMaterials } from "@/types/database";
 
+type StudyTab =
+  | "notes"
+  | "flashcards"
+  | "quiz"
+  | "mindmap"
+  | "chat"
+  | "podcast";
+
+const VALID_TABS: StudyTab[] = [
+  "notes",
+  "flashcards",
+  "quiz",
+  "mindmap",
+  "chat",
+  "podcast",
+];
+
 export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
+  const searchParams = useSearchParams();
   const setActiveStudyId = useStudySessionStore((s) => s.setActiveStudyId);
   const activeTab = useStudySessionStore((s) => s.activeTab);
   const setActiveTab = useStudySessionStore((s) => s.setActiveTab);
@@ -26,6 +45,13 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
   useEffect(() => {
     setActiveStudyId(study.id);
   }, [study.id, setActiveStudyId]);
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab && VALID_TABS.includes(tab as StudyTab)) {
+      setActiveTab(tab as StudyTab);
+    }
+  }, [searchParams, setActiveTab]);
 
   useEffect(() => {
     if (study.share_token) {
@@ -79,29 +105,31 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-      className="space-y-8"
+      className="space-y-6"
     >
-      <div className="space-y-3 border-b border-border/60 pb-6">
+      <div className="space-y-4 border-b border-border/60 pb-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Badge variant="secondary" className="capitalize">
             {kindLabel}
           </Badge>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1">
             {shareUrl ? (
               <>
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
+                  className="text-muted-foreground"
                   onClick={() => void navigator.clipboard.writeText(shareUrl)}
                 >
                   <Link2 className="h-4 w-4" />
-                  Copy share link
+                  Copy link
                 </Button>
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
+                  className="text-muted-foreground"
                   onClick={() => void disableShare()}
                 >
                   <Link2Off className="h-4 w-4" />
@@ -111,8 +139,9 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
             ) : (
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 size="sm"
+                className="text-muted-foreground"
                 onClick={() => void enableShare()}
               >
                 <Link2 className="h-4 w-4" />
@@ -129,26 +158,45 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
             href={study.source_url}
             target="_blank"
             rel="noreferrer"
-            className="text-sm text-primary hover:underline"
+            className="inline-block text-sm text-primary hover:underline"
           >
             Open source
           </a>
         ) : null}
+
+        <div className="flex flex-wrap gap-2 pt-1">
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setActiveTab("flashcards")}
+          >
+            <Layers className="h-4 w-4" />
+            Review cards
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => setActiveTab("quiz")}
+          >
+            <ListChecks className="h-4 w-4" />
+            Take quiz
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => setActiveTab("chat")}
+          >
+            <MessageCircle className="h-4 w-4" />
+            Ask chat
+          </Button>
+        </div>
       </div>
 
       <Tabs
         value={activeTab}
-        onValueChange={(v) =>
-          setActiveTab(
-            v as
-              | "notes"
-              | "flashcards"
-              | "quiz"
-              | "mindmap"
-              | "chat"
-              | "podcast"
-          )
-        }
+        onValueChange={(v) => setActiveTab(v as StudyTab)}
       >
         <TabsList aria-label="Study materials" className="flex-wrap">
           <TabsTrigger value="notes">Notes</TabsTrigger>
@@ -174,7 +222,7 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
           <ChatPanel studyId={study.id} />
         </TabsContent>
         <TabsContent value="podcast">
-          <PodcastPanel studyId={study.id} />
+          <PodcastPanel studyId={study.id} title={study.title} />
         </TabsContent>
       </Tabs>
     </motion.div>

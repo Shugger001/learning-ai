@@ -6,9 +6,15 @@ import StarterKit from "@tiptap/starter-kit";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
-import { Check, Copy, Download, Pencil, Save, Eye } from "lucide-react";
+import { Check, Copy, Download, Pencil, Save, Eye, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils/cn";
 import type { ApiResponse } from "@/types/api";
 import type { Note } from "@/types/database";
@@ -121,21 +127,12 @@ export function NotesPanel({ note }: NotesPanelProps) {
     printWindow.document.close();
   }
 
+  const dirty =
+    content !== (note.content ?? "") || summary !== (note.summary ?? "");
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" size="sm" onClick={copyAll}>
-          {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-          {copied ? "Copied" : "Copy"}
-        </Button>
-        <Button type="button" variant="outline" size="sm" onClick={exportMarkdown}>
-          <Download className="h-4 w-4" />
-          Markdown
-        </Button>
-        <Button type="button" variant="outline" size="sm" onClick={exportPdf}>
-          <Download className="h-4 w-4" />
-          PDF
-        </Button>
         <Button
           type="button"
           variant="outline"
@@ -150,15 +147,46 @@ export function NotesPanel({ note }: NotesPanelProps) {
           {editing ? <Eye className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
           {editing ? "Preview" : "Edit"}
         </Button>
-        <Button
-          type="button"
-          size="sm"
-          onClick={() => void saveNote(content, summary)}
-          disabled={saving}
-        >
-          <Save className="h-4 w-4" />
-          {saving ? "Saving…" : "Save"}
-        </Button>
+        {(editing || dirty) ? (
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => void saveNote(content, summary)}
+            disabled={saving}
+          >
+            <Save className="h-4 w-4" />
+            {saving ? "Saving…" : "Save"}
+          </Button>
+        ) : null}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button type="button" variant="ghost" size="sm">
+              Export
+              <ChevronDown className="h-3.5 w-3.5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem
+              className="cursor-pointer"
+              onClick={() => void copyAll()}
+            >
+              {copied ? (
+                <Check className="mr-2 h-4 w-4" />
+              ) : (
+                <Copy className="mr-2 h-4 w-4" />
+              )}
+              {copied ? "Copied" : "Copy all"}
+            </DropdownMenuItem>
+            <DropdownMenuItem className="cursor-pointer" onClick={exportMarkdown}>
+              <Download className="mr-2 h-4 w-4" />
+              Markdown
+            </DropdownMenuItem>
+            <DropdownMenuItem className="cursor-pointer" onClick={exportPdf}>
+              <Download className="mr-2 h-4 w-4" />
+              PDF
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <section className="space-y-2">

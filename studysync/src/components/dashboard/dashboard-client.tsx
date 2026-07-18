@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -37,7 +38,7 @@ interface DashboardClientProps {
   userName?: string | null;
 }
 
-const QUICK_START: {
+const PRIMARY_START: {
   type: ContentType;
   label: string;
   hint: string;
@@ -55,24 +56,16 @@ const QUICK_START: {
     hint: "Capture live lecture audio",
     icon: Mic,
   },
-  {
-    type: "pdf",
-    label: "PDF / Slides",
-    hint: "Lecture decks & readings",
-    icon: FileText,
-  },
-  {
-    type: "video",
-    label: "Video",
-    hint: "Recorded lectures",
-    icon: Video,
-  },
-  {
-    type: "text",
-    label: "Paste text",
-    hint: "Notes or transcripts",
-    icon: Type,
-  },
+];
+
+const MORE_FORMATS: {
+  type: ContentType;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}[] = [
+  { type: "pdf", label: "PDF / Slides", icon: FileText },
+  { type: "video", label: "Video", icon: Video },
+  { type: "text", label: "Paste text", icon: Type },
 ];
 
 const FILTERS: { id: LibraryFilter; label: string }[] = [
@@ -97,14 +90,25 @@ export function DashboardClient({
   plan,
   userName,
 }: DashboardClientProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [studies, setStudies] = useState(initialStudies);
   const [folders, setFolders] = useState(initialFolders);
   const [open, setOpen] = useState(false);
   const [initialType, setInitialType] = useState<ContentType | null>(null);
   const [filter, setFilter] = useState<LibraryFilter>("all");
   const [folderId, setFolderId] = useState<string | null>(null);
+  const [showMoreFormats, setShowMoreFormats] = useState(false);
 
   const firstName = userName?.trim().split(/\s+/)[0] || null;
+
+  useEffect(() => {
+    if (searchParams.get("new") === "1") {
+      setOpen(true);
+      setInitialType(null);
+      router.replace("/dashboard", { scroll: false });
+    }
+  }, [searchParams, router]);
 
   const summaryByStudy = useMemo(() => {
     const map = new Map<string, string>();
@@ -118,9 +122,12 @@ export function DashboardClient({
     const complete = studies.filter((s) => s.status === "complete").length;
     const processing = studies.filter((s) => s.status === "processing").length;
     const failed = studies.filter((s) => s.status === "error").length;
-    const cards = studies.reduce((sum, s) => sum + (s.flashcard_count || 0), 0);
-    const quizzes = studies.reduce((sum, s) => sum + (s.quiz_count || 0), 0);
-    return { complete, processing, failed, cards, quizzes, total: studies.length };
+    return {
+      complete,
+      processing,
+      failed,
+      total: studies.length,
+    };
   }, [studies]);
 
   const continueStudy = useMemo(
@@ -157,6 +164,23 @@ export function DashboardClient({
     if (!next) setInitialType(null);
   }
 
+  const primaryCta =
+    dueToday > 0 && continueStudy
+      ? {
+          href: `/study/${continueStudy.id}?tab=flashcards`,
+          label: `Review ${dueToday} due card${dueToday === 1 ? "" : "s"}`,
+          secondary: "Continue studying" as const,
+          secondaryHref: `/study/${continueStudy.id}?tab=notes`,
+        }
+      : continueStudy
+        ? {
+            href: `/study/${continueStudy.id}?tab=notes`,
+            label: "Continue studying",
+            secondary: "Practice cards" as const,
+            secondaryHref: `/study/${continueStudy.id}?tab=flashcards`,
+          }
+        : null;
+
   return (
     <>
       <section className="relative overflow-hidden border border-border/70 bg-card/40">
@@ -169,75 +193,90 @@ export function DashboardClient({
           }}
         />
         <div className="relative flex flex-col gap-8 px-6 py-8 sm:px-8 sm:py-10 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-xl space-y-3">
+          <div className="max-w-xl space-y-4">
             <p className="text-sm font-medium text-primary">Library</p>
             <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
               {firstName ? `Welcome back, ${firstName}` : "Your studies"}
             </h1>
             <p className="text-[15px] leading-relaxed text-muted-foreground">
-              Upload, record, or paste a YouTube link — StudySync builds notes,
-              flashcards, quizzes, chat, and podcasts.
+              {dueToday > 0
+                ? `${dueToday} flashcard${dueToday === 1 ? "" : "s"} due — start with spaced recall.`
+                : "Upload, record, or paste a YouTube link to build your next study pack."}
             </p>
-            <div className="flex flex-wrap gap-3 pt-1 text-sm">
-              <Link href="/library" className="text-primary hover:underline">
+            <div className="flex flex-wrap gap-2 pt-1">
+              {primaryCta ? (
+                <>
+                  <Button asChild size="lg">
+                    <Link href={primaryCta.href}>
+                      {primaryCta.label}
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline" size="lg">
+                    <Link href={primaryCta.secondaryHref}>
+                      {primaryCta.secondary}
+                    </Link>
+                  </Button>
+                </>
+              ) : (
+                <Button size="lg" onClick={() => openNew()}>
+                  <Plus className="h-4 w-4" />
+                  New study
+                </Button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+              <Link href="/library" className="hover:text-foreground">
                 Premade library
               </Link>
-              <Link href="/pricing" className="text-muted-foreground hover:text-foreground">
+              <Link href="/pricing" className="hover:text-foreground">
                 {plan === "pro" ? "Pro plan" : "Upgrade"}
               </Link>
-              {dueToday > 0 ? (
-                <span className="text-muted-foreground">
-                  {dueToday} card{dueToday === 1 ? "" : "s"} due today
-                </span>
-              ) : null}
             </div>
           </div>
 
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:gap-10">
-            {studies.length > 0 ? (
-              <dl className="grid grid-cols-2 gap-x-8 gap-y-4 sm:grid-cols-5">
-                {[
-                  { label: "Studies", value: stats.total },
-                  { label: "Ready", value: stats.complete },
-                  { label: "Due", value: dueToday },
-                  { label: "Cards", value: stats.cards },
-                  { label: "Quiz Qs", value: stats.quizzes },
-                ].map((item) => (
-                  <div key={item.label}>
-                    <dt className="text-xs uppercase tracking-wide text-muted-foreground">
-                      {item.label}
-                    </dt>
-                    <dd className="font-display mt-1 text-2xl font-semibold tabular-nums">
-                      {item.value}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            ) : null}
-            <Button
-              size="lg"
-              onClick={() => openNew()}
-              aria-label="Create new study"
-              className="shrink-0"
-            >
-              <Plus className="h-4 w-4" />
-              New Study
-            </Button>
-          </div>
+          {studies.length > 0 ? (
+            <dl className="grid grid-cols-3 gap-x-8 gap-y-4">
+              {[
+                { label: "Studies", value: stats.total },
+                { label: "Due", value: dueToday },
+                { label: "Ready", value: stats.complete },
+              ].map((item) => (
+                <div key={item.label}>
+                  <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {item.label}
+                  </dt>
+                  <dd className="font-display mt-1 text-2xl font-semibold tabular-nums">
+                    {item.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          ) : null}
         </div>
       </section>
 
       <section className="mt-10">
-        <div className="mb-4">
-          <h2 className="font-display text-xl font-semibold tracking-tight">
-            Start from
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Jump straight into YouTube, recording, or file upload.
-          </p>
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="font-display text-xl font-semibold tracking-tight">
+              Start from
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              YouTube and live recording first—other formats when you need them.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowMoreFormats((v) => !v)}
+          >
+            {showMoreFormats ? "Hide formats" : "More formats"}
+          </Button>
         </div>
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          {QUICK_START.map(({ type, label, hint, icon: Icon }) => (
+        <ul className="grid gap-3 sm:grid-cols-2">
+          {PRIMARY_START.map(({ type, label, hint, icon: Icon }) => (
             <li key={type}>
               <button
                 type="button"
@@ -259,6 +298,22 @@ export function DashboardClient({
             </li>
           ))}
         </ul>
+        {showMoreFormats ? (
+          <ul className="mt-3 grid gap-2 sm:grid-cols-3">
+            {MORE_FORMATS.map(({ type, label, icon: Icon }) => (
+              <li key={type}>
+                <button
+                  type="button"
+                  onClick={() => openNew(type)}
+                  className="flex w-full items-center gap-2 border border-dashed border-border/70 px-3 py-2.5 text-left text-sm hover:border-primary/35 hover:bg-muted/30"
+                >
+                  <Icon className="h-4 w-4 text-muted-foreground" />
+                  {label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </section>
 
       <div className="mt-10">
@@ -305,36 +360,6 @@ export function DashboardClient({
         </motion.div>
       ) : (
         <>
-          {continueStudy ? (
-            <section className="mt-10 border border-border/70 bg-card/50">
-              <div className="flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
-                <div className="max-w-2xl space-y-2">
-                  <p className="text-sm font-medium text-primary">
-                    Continue studying
-                  </p>
-                  <h2 className="font-display text-2xl font-semibold tracking-tight">
-                    {continueStudy.title}
-                  </h2>
-                  <p className="line-clamp-2 text-[15px] leading-relaxed text-muted-foreground">
-                    {summaryByStudy.get(continueStudy.id) ||
-                      `${continueStudy.flashcard_count} flashcards and ${continueStudy.quiz_count ?? 0} quiz questions ready for active recall.`}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button asChild>
-                    <Link href={`/study/${continueStudy.id}`}>
-                      Open notes
-                      <ArrowRight className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                  <Button asChild variant="outline">
-                    <Link href={`/study/${continueStudy.id}`}>Practice cards</Link>
-                  </Button>
-                </div>
-              </div>
-            </section>
-          ) : null}
-
           {processingStudies.length > 0 ? (
             <section className="mt-10 space-y-4">
               <div>
@@ -492,14 +517,7 @@ export function DashboardClient({
             )}
           </section>
 
-          <section className="mt-12 border-t border-border/70 pt-8">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              Today’s tip
-            </p>
-            <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-foreground/90">
-              {tip}
-            </p>
-          </section>
+          <p className="mt-12 text-sm text-muted-foreground">{tip}</p>
         </>
       )}
 
