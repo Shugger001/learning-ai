@@ -6,6 +6,7 @@ import { extractTextFromBuffer } from "@/lib/ai/extract";
 import {
   generateMockMaterials,
   generateStudyMaterials,
+  normalizeSourceText,
 } from "@/lib/ai/generate";
 import type { ContentType } from "@/types/database";
 
@@ -94,6 +95,8 @@ export async function POST(request: Request) {
     if (!sourceText?.trim()) {
       throw new Error("No text could be extracted from the upload");
     }
+
+    sourceText = normalizeSourceText(sourceText);
 
     await setProgress(admin, study_id, 55, { transcript_text: sourceText });
 

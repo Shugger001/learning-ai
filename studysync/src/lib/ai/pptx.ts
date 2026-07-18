@@ -21,30 +21,29 @@ export async function extractTextFromPptx(buffer: Buffer): Promise<string> {
     const file = zip.file(path);
     if (!file) continue;
     const xml = await file.async("string");
-    const texts = Array.from(xml.matchAll(/<a:t(?:\s[^>]*)?>([^<]*)<\/a:t>/g))
-      .map((m) => decodeXmlEntities(m[1] ?? "").trim())
-      .filter(Boolean);
-
-    if (texts.length) {
+    const body = extractParagraphText(xml);
+    if (body) {
       const slideNum = /slide(\d+)\.xml$/i.exec(path)?.[1] ?? "?";
-      sections.push(`Slide ${slideNum}\n${texts.join("\n")}`);
+      sections.push(`## Slide ${slideNum}\n${body}`);
     }
   }
 
-  // Speaker notes (optional)
   const notePaths = Object.keys(zip.files)
     .filter((name) => /^ppt\/notesSlides\/notesSlide\d+\.xml$/i.test(name))
-    .sort();
+    .sort((a, b) => {
+      const na = Number(/notesSlide(\d+)\.xml$/i.exec(a)?.[1] ?? 0);
+      const nb = Number(/notesSlide(\d+)\.xml$/i.exec(b)?.[1] ?? 0);
+      return na - nb;
+    });
 
   for (const path of notePaths) {
     const file = zip.file(path);
     if (!file) continue;
     const xml = await file.async("string");
-    const texts = Array.from(xml.matchAll(/<a:t(?:\s[^>]*)?>([^<]*)<\/a:t>/g))
-      .map((m) => decodeXmlEntities(m[1] ?? "").trim())
-      .filter(Boolean);
-    if (texts.length) {
-      sections.push(`Notes\n${texts.join("\n")}`);
+    const body = extractParagraphText(xml);
+    if (body) {
+      const noteNum = /notesSlide(\d+)\.xml$/i.exec(path)?.[1] ?? "?";
+      sections.push(`### Speaker notes (slide ${noteNum})\n${body}`);
     }
   }
 
@@ -53,6 +52,36 @@ export async function extractTextFromPptx(buffer: Buffer): Promise<string> {
     throw new Error("Could not extract text from PowerPoint file");
   }
   return combined;
+}
+
+/**
+ * PowerPoint splits words across many <a:t> runs inside one <a:p>.
+ * Join runs within each paragraph, keep paragraphs as separate lines.
+ */
+function extractParagraphText(xml: string): string {
+  const paragraphs = Array.from(xml.matchAll(/<a:p\b[^>]*>[\s\S]*?<\/a:p>/g));
+  const lines: string[] = [];
+
+  for (const match of paragraphs) {
+    const paragraph = match[0]
+      .replace(/<a:br\b[^>]*\/>/g, "\n")
+      .replace(/<a:br\b[^>]*>\s*<\/a:br>/g, "\n");
+
+    const runs = Array.from(
+      paragraph.matchAll(/<a:t\b[^>]*>([^<]*)<\/a:t>/g)
+    ).map((m) => decodeXmlEntities(m[1] ?? ""));
+
+    const line = runs
+      .join("")
+      .replace(/[ \t]+\n/g, "\n")
+      .replace(/\n[ \t]+/g, "\n")
+      .replace(/[ \t]{2,}/g, " ")
+      .trim();
+
+    if (line) lines.push(line);
+  }
+
+  return lines.join("\n");
 }
 
 function decodeXmlEntities(value: string): string {

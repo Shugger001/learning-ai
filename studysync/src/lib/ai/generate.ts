@@ -40,6 +40,52 @@ function getOpenAI() {
   return new OpenAI({ apiKey });
 }
 
+/** Collapse OCR/slide artifacts like one-word-per-line into readable prose. */
+export function normalizeSourceText(text: string): string {
+  const lines = text
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  const out: string[] = [];
+  let buf = "";
+
+  const flush = () => {
+    if (buf) {
+      out.push(buf.trim());
+      buf = "";
+    }
+  };
+
+  for (const line of lines) {
+    if (/^#{1,6}\s/.test(line) || /^Slide\s+\d+/i.test(line)) {
+      flush();
+      out.push(line.startsWith("#") ? line : `## ${line}`);
+      continue;
+    }
+
+    const endsSentence = /[.!?:;]$/.test(line);
+    const isShortFragment = line.split(/\s+/).length <= 4 && line.length < 40;
+
+    if (!buf) {
+      buf = line;
+    } else if (isShortFragment && !endsSentence) {
+      buf = `${buf} ${line}`.replace(/\s+/g, " ");
+    } else if (!endsSentence && isShortFragment) {
+      buf = `${buf} ${line}`.replace(/\s+/g, " ");
+    } else {
+      buf = `${buf} ${line}`.replace(/\s+/g, " ");
+      if (endsSentence || buf.length > 160) flush();
+    }
+
+    if (endsSentence) flush();
+  }
+  flush();
+
+  return out.join("\n\n").trim();
+}
+
 export async function transcribeAudio(buffer: Buffer, filename: string) {
   const openai = getOpenAI();
   const file = await toFile(buffer, filename);
@@ -63,9 +109,9 @@ export async function generateStudyMaterials(params: {
   const notesGuidance =
     params.detailLevel === "concise"
       ? "Keep notes concise: short bullets, high-signal only."
-      : "Write detailed notes with clear headings, examples, and key definitions.";
+      : "Write detailed, well-structured study notes with clear headings, short paragraphs, examples, and key definitions.";
 
-  const truncated = params.sourceText.slice(0, 100_000);
+  const truncated = normalizeSourceText(params.sourceText).slice(0, 100_000);
 
   const completion = await openai.chat.completions.create({
     model: "gpt-4o-mini",
@@ -78,8 +124,8 @@ export async function generateStudyMaterials(params: {
 Return ONLY valid JSON matching this shape:
 {
   "title": string,
-  "summary": string,
-  "notes": string (markdown),
+  "summary": string (2–4 polished sentences, no line breaks mid-sentence),
+  "notes": string (clean markdown ready to read),
   "flashcards": [{ "question": string, "answer": string }],
   "quizzes": [{ "question": string, "options": string[], "correct_answer": string, "explanation": string }],
   "mind_map": { "name": string, "children": [{ "name": string, "children": [...] }] }
@@ -89,6 +135,9 @@ Rules:
 - Generate ${quizCount} multiple-choice quizzes with 4 options each.
 - correct_answer must exactly match one option.
 - ${notesGuidance}
+- Notes MUST use proper markdown: # / ## headings, bullet lists, and short paragraphs — never one word per line.
+- Rewrite slide fragments into coherent study prose; do not dump raw OCR/slide text.
+- Summary must be a readable paragraph (not fragmented lines).
 - Mind map should be hierarchical with 1 root and 2–3 depth levels.
 - Base everything strictly on the source content.`,
       },
@@ -114,29 +163,69 @@ export function generateMockMaterials(params: {
   flashcardCount: number;
   titleHint?: string;
 }): GeneratedMaterials {
-  const snippet = params.sourceText.slice(0, 280).trim() || "your lecture content";
   const title = params.titleHint || "Untitled Study";
+  const normalized = normalizeSourceText(params.sourceText);
+  const slides = splitIntoSections(normalized);
+  const overview = slides
+    .slice(0, 4)
+    .map((s) => s.body)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 420);
 
-  const flashcards = Array.from({ length: params.flashcardCount }, (_, i) => ({
-    question: `Key concept #${i + 1} from ${title}?`,
-    answer: `Review point ${i + 1}: ${snippet.slice(0, 120)}…`,
-  }));
+  const summary =
+    overview.length > 40
+      ? overview
+      : `A structured overview of ${title}, covering the main ideas from your upload.`;
+
+  const notesBody =
+    slides.length > 0
+      ? slides
+          .map((section) => {
+            const bullets = section.body
+              .split(/(?<=[.!?])\s+/)
+              .map((s) => s.trim())
+              .filter((s) => s.length > 12)
+              .slice(0, 6);
+            const list =
+              bullets.length > 0
+                ? bullets.map((b) => `- ${b}`).join("\n")
+                : `- ${section.body.slice(0, 200)}`;
+            return `## ${section.heading}\n\n${list}`;
+          })
+          .join("\n\n")
+      : `## Overview\n\n- Review the main ideas from ${title}\n- Practice with flashcards and the quiz`;
+
+  const flashcards = Array.from({ length: params.flashcardCount }, (_, i) => {
+    const section = slides[i % Math.max(slides.length, 1)];
+    return {
+      question: section
+        ? `What is covered in “${section.heading}”?`
+        : `Key concept #${i + 1} from ${title}?`,
+      answer: section
+        ? section.body.slice(0, 180) || `Review section ${i + 1} of ${title}.`
+        : `Review point ${i + 1} from ${title}.`,
+    };
+  });
+
+  const topic = slides[0]?.heading ?? title;
 
   return {
     title,
-    summary: `Summary of ${title}: ${snippet}`,
-    notes: `# ${title}\n\n## Overview\n\n${snippet}\n\n## Key takeaways\n\n- Review the main ideas from the source\n- Practice with flashcards and the quiz\n- Expand this note with your own examples\n`,
+    summary,
+    notes: `# ${title}\n\n## Overview\n\n${summary}\n\n${notesBody}\n`,
     flashcards,
     quizzes: [
       {
-        question: `What is the primary focus of "${title}"?`,
+        question: `What is the primary focus of “${title}”?`,
         options: [
-          "The core ideas presented in the lecture",
+          topic,
           "Unrelated trivia",
           "A random math proof",
           "None of the above",
         ],
-        correct_answer: "The core ideas presented in the lecture",
+        correct_answer: topic,
         explanation: "StudySync materials are generated from your uploaded lecture content.",
       },
       {
@@ -148,16 +237,36 @@ export function generateMockMaterials(params: {
     ],
     mind_map: {
       name: title,
-      children: [
-        {
-          name: "Core concepts",
-          children: [{ name: "Idea A" }, { name: "Idea B" }],
-        },
-        {
-          name: "Practice",
-          children: [{ name: "Flashcards" }, { name: "Quiz" }],
-        },
-      ],
+      children: slides.slice(0, 4).map((s) => ({
+        name: s.heading.slice(0, 40),
+        children: [{ name: "Key points" }],
+      })),
     },
   };
+}
+
+function splitIntoSections(
+  text: string
+): { heading: string; body: string }[] {
+  const parts = text.split(/\n(?=##\s)/);
+  const sections: { heading: string; body: string }[] = [];
+
+  for (const part of parts) {
+    const trimmed = part.trim();
+    if (!trimmed) continue;
+    const headingMatch = /^##\s+(.+)\n?([\s\S]*)$/.exec(trimmed);
+    if (headingMatch) {
+      sections.push({
+        heading: headingMatch[1].trim(),
+        body: headingMatch[2].replace(/\s+/g, " ").trim(),
+      });
+    } else {
+      sections.push({
+        heading: "Key ideas",
+        body: trimmed.replace(/\s+/g, " ").trim(),
+      });
+    }
+  }
+
+  return sections.filter((s) => s.body.length > 0);
 }
