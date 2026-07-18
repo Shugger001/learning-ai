@@ -1,5 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
-import { DashboardClient } from "@/components/dashboard/dashboard-client";
+import {
+  DashboardClient,
+  type StudySummary,
+} from "@/components/dashboard/dashboard-client";
 import type { Study } from "@/types/database";
 
 export default async function DashboardPage() {
@@ -21,6 +24,18 @@ export default async function DashboardPage() {
       .single(),
   ]);
 
+  const studyRows = (studies as Study[]) ?? [];
+  const studyIds = studyRows.map((s) => s.id);
+
+  let summaries: StudySummary[] = [];
+  if (studyIds.length > 0) {
+    const { data: notes } = await supabase
+      .from("notes")
+      .select("study_id, summary")
+      .in("study_id", studyIds);
+    summaries = (notes as StudySummary[]) ?? [];
+  }
+
   const userName =
     profile?.full_name ||
     (user?.user_metadata?.full_name as string | undefined) ||
@@ -28,7 +43,8 @@ export default async function DashboardPage() {
 
   return (
     <DashboardClient
-      studies={(studies as Study[]) ?? []}
+      studies={studyRows}
+      summaries={summaries}
       userName={userName}
     />
   );

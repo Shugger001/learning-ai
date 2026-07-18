@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDropzone } from "react-dropzone";
 import {
@@ -30,6 +30,8 @@ import type { ContentType, DetailLevel, Study } from "@/types/database";
 interface NewStudyModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** When opening from a quick action, skip to upload with this type selected. */
+  initialContentType?: ContentType | null;
 }
 
 const CONTENT_TYPES: {
@@ -72,7 +74,11 @@ const CONTENT_TYPES: {
   },
 ];
 
-export function NewStudyModal({ open, onOpenChange }: NewStudyModalProps) {
+export function NewStudyModal({
+  open,
+  onOpenChange,
+  initialContentType = null,
+}: NewStudyModalProps) {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [contentType, setContentType] = useState<ContentType | null>(null);
@@ -84,6 +90,15 @@ export function NewStudyModal({ open, onOpenChange }: NewStudyModalProps) {
   const [detailLevel, setDetailLevel] = useState<DetailLevel>("detailed");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    if (initialContentType) {
+      setContentType(initialContentType);
+      setStep(2);
+      setError(null);
+    }
+  }, [open, initialContentType]);
 
   const accept = useMemo(() => {
     const match = CONTENT_TYPES.find((c) => c.type === contentType);

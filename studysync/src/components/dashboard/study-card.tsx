@@ -42,7 +42,13 @@ function statusLabel(status: Study["status"]) {
   return "Failed";
 }
 
-export function StudyCard({ study }: { study: Study }) {
+export function StudyCard({
+  study,
+  summary,
+}: {
+  study: Study;
+  summary?: string;
+}) {
   const { label, icon: Icon } = kindFromStudy(study);
   const status = statusLabel(study.status);
   const date = new Date(study.created_at).toLocaleDateString(undefined, {
@@ -55,7 +61,7 @@ export function StudyCard({ study }: { study: Study }) {
     <Link href={`/study/${study.id}`} className="group block h-full">
       <article
         className={cn(
-          "relative flex h-full min-h-[11.5rem] flex-col overflow-hidden border border-border/70 bg-card/50 p-5",
+          "relative flex h-full min-h-[12.5rem] flex-col overflow-hidden border border-border/70 bg-card/50 p-5",
           "transition-colors duration-200 group-hover:border-primary/40 group-hover:bg-accent/25"
         )}
       >
@@ -96,6 +102,10 @@ export function StudyCard({ study }: { study: Study }) {
               {study.processing_progress}% complete
             </p>
           </div>
+        ) : summary ? (
+          <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+            {summary}
+          </p>
         ) : (
           <p className="mt-3 text-sm text-muted-foreground">
             {study.flashcard_count} flashcards
