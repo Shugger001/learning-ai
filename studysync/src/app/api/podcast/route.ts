@@ -65,11 +65,25 @@ export async function POST(request: Request) {
     return apiError("Server misconfigured", 500);
   }
 
-  const { data: rawProfile } = await admin
+  const profileSelect = await admin
     .from("profiles")
     .select("plan, podcasts_used, usage_reset_at")
     .eq("user_id", user.id)
     .single();
+
+  let rawProfile = profileSelect.data as {
+    plan: string | null;
+    podcasts_used: number | null;
+    usage_reset_at?: string | null;
+  } | null;
+  if (profileSelect.error?.message?.includes("usage_reset_at")) {
+    const fallback = await admin
+      .from("profiles")
+      .select("plan, podcasts_used")
+      .eq("user_id", user.id)
+      .single();
+    rawProfile = fallback.data;
+  }
 
   const profile = await ensureUsagePeriod(admin, user.id, rawProfile);
 

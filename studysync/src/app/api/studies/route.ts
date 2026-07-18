@@ -106,11 +106,25 @@ export async function POST(request: Request) {
     );
   }
 
-  const { data: rawProfile } = await admin
+  const profileSelect = await admin
     .from("profiles")
     .select("plan, uploads_used, usage_reset_at")
     .eq("user_id", user.id)
     .maybeSingle();
+
+  let rawProfile = profileSelect.data as {
+    plan: string | null;
+    uploads_used: number | null;
+    usage_reset_at?: string | null;
+  } | null;
+  if (profileSelect.error?.message?.includes("usage_reset_at")) {
+    const fallback = await admin
+      .from("profiles")
+      .select("plan, uploads_used")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    rawProfile = fallback.data;
+  }
 
   const profile = await ensureUsagePeriod(admin, user.id, rawProfile);
 

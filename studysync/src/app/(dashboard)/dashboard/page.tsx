@@ -13,7 +13,7 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [{ data: studies }, { data: profile }, foldersRes] = await Promise.all([
+  const [{ data: studies }, profileRes, foldersRes] = await Promise.all([
     supabase
       .from("studies")
       .select("*")
@@ -32,6 +32,24 @@ export default async function DashboardPage() {
       .eq("user_id", user!.id)
       .order("created_at", { ascending: true }),
   ]);
+
+  // Older projects may not have usage_reset_at yet - fall back without it.
+  let profile = profileRes.data as {
+    full_name: string | null;
+    plan: string | null;
+    uploads_used: number | null;
+    chat_used: number | null;
+    podcasts_used: number | null;
+    usage_reset_at?: string | null;
+  } | null;
+  if (profileRes.error?.message?.includes("usage_reset_at")) {
+    const fallback = await supabase
+      .from("profiles")
+      .select("full_name, plan, uploads_used, chat_used, podcasts_used")
+      .eq("user_id", user!.id)
+      .single();
+    profile = fallback.data;
+  }
 
   const studyRows = (studies as Study[]) ?? [];
   const studyIds = studyRows.map((s) => s.id);

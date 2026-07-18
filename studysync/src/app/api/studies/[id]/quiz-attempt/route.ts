@@ -37,7 +37,17 @@ export async function GET(_request: Request, { params }: RouteParams) {
     .limit(1)
     .maybeSingle();
 
-  if (error) return apiError(error.message, 500);
+  // Table may not exist until product-depth migration is applied.
+  if (error) {
+    if (
+      error.message.includes("quiz_attempts") ||
+      error.code === "42P01" ||
+      error.code === "PGRST205"
+    ) {
+      return apiSuccess(null);
+    }
+    return apiError(error.message, 500);
+  }
   return apiSuccess(data);
 }
 

@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
-export default function GlobalError({
+export default function Error({
   error,
   reset,
 }: {
@@ -16,11 +17,24 @@ export default function GlobalError({
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-4 px-4 text-center">
-      <h1 className="text-2xl font-semibold">Something went wrong</h1>
-      <p className="max-w-md text-sm text-muted-foreground">
-        {error.message || "An unexpected error occurred."}
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+        Something went wrong
       </p>
-      <Button onClick={reset}>Try again</Button>
+      <h1 className="font-display text-2xl font-semibold tracking-tight">
+        StudySync hit a snag
+      </h1>
+      <p className="max-w-md text-sm text-muted-foreground">
+        Try again. If this keeps happening, refresh the page or head back to
+        your dashboard.
+      </p>
+      <div className="flex flex-wrap justify-center gap-2">
+        <Button type="button" onClick={reset}>
+          Try again
+        </Button>
+        <Button asChild variant="outline">
+          <Link href="/dashboard">Dashboard</Link>
+        </Button>
+      </div>
     </main>
   );
 }

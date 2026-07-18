@@ -37,6 +37,11 @@ export async function ensureUsagePeriod<T extends UsageProfile>(
   if (!profile) return null;
   if (isPro(profile.plan)) return profile;
 
+  // Column may be missing until product-depth migration is applied.
+  if (!("usage_reset_at" in profile) || profile.usage_reset_at === undefined) {
+    return profile;
+  }
+
   const resetAt = profile.usage_reset_at
     ? new Date(profile.usage_reset_at).getTime()
     : 0;

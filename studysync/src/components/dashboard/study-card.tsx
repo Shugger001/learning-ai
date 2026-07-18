@@ -62,7 +62,7 @@ function kindFromStudy(study: Study): {
     youtube: { label: "YouTube", icon: Clapperboard },
   };
 
-  return map[study.content_type];
+  return map[study.content_type] ?? { label: "Study", icon: FileText };
 }
 
 function statusLabel(status: Study["status"]) {
