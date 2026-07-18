@@ -101,11 +101,12 @@ export async function transcribeAudio(buffer: Buffer, filename: string) {
 export async function generateStudyMaterials(params: {
   sourceText: string;
   flashcardCount: number;
+  quizCount: number;
   detailLevel: DetailLevel;
   contentType: string;
 }): Promise<GeneratedMaterials> {
   const openai = getOpenAI();
-  const quizCount = Math.min(10, Math.max(5, Math.floor(params.flashcardCount / 2)));
+  const quizCount = Math.min(30, Math.max(1, params.quizCount));
   const notesGuidance =
     params.detailLevel === "concise"
       ? "Keep notes concise: short bullets, high-signal only."
@@ -132,7 +133,7 @@ Return ONLY valid JSON matching this shape:
 }
 Rules:
 - Generate exactly ${params.flashcardCount} flashcards for active recall.
-- Generate ${quizCount} multiple-choice quizzes with 4 options each.
+- Generate exactly ${quizCount} multiple-choice quiz questions with 4 options each.
 - correct_answer must exactly match one option.
 - ${notesGuidance}
 - Notes MUST use proper markdown: # / ## headings, bullet lists, and short paragraphs — never one word per line.
@@ -161,9 +162,11 @@ Rules:
 export function generateMockMaterials(params: {
   sourceText: string;
   flashcardCount: number;
+  quizCount?: number;
   titleHint?: string;
 }): GeneratedMaterials {
   const title = params.titleHint || "Untitled Study";
+  const quizCount = Math.min(30, Math.max(1, params.quizCount ?? 10));
   const normalized = normalizeSourceText(params.sourceText);
   const slides = splitIntoSections(normalized);
   const overview = slides
@@ -211,30 +214,29 @@ export function generateMockMaterials(params: {
 
   const topic = slides[0]?.heading ?? title;
 
+  const quizzes = Array.from({ length: quizCount }, (_, i) => {
+    const section = slides[i % Math.max(slides.length, 1)];
+    const focus = section?.heading ?? `topic ${i + 1}`;
+    const correct = `Core idea from ${focus}`;
+    return {
+      question: `Which statement best matches “${focus}” in ${title}?`,
+      options: [
+        correct,
+        "An unrelated detail not covered in the material",
+        "A contradiction of the lecture content",
+        "None of the above",
+      ],
+      correct_answer: correct,
+      explanation: `This question checks understanding of ${focus}.`,
+    };
+  });
+
   return {
     title,
     summary,
     notes: `# ${title}\n\n## Overview\n\n${summary}\n\n${notesBody}\n`,
     flashcards,
-    quizzes: [
-      {
-        question: `What is the primary focus of “${title}”?`,
-        options: [
-          topic,
-          "Unrelated trivia",
-          "A random math proof",
-          "None of the above",
-        ],
-        correct_answer: topic,
-        explanation: "StudySync materials are generated from your uploaded lecture content.",
-      },
-      {
-        question: "Which study method does StudySync emphasize?",
-        options: ["Passive rereading", "Active recall", "Highlighting only", "Cramming"],
-        correct_answer: "Active recall",
-        explanation: "Flashcards and quizzes are designed for active recall practice.",
-      },
-    ],
+    quizzes,
     mind_map: {
       name: title,
       children: slides.slice(0, 4).map((s) => ({

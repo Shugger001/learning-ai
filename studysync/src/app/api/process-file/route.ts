@@ -104,12 +104,14 @@ export async function POST(request: Request) {
       ? await generateStudyMaterials({
           sourceText,
           flashcardCount: study.flashcard_count,
+          quizCount: study.quiz_count ?? 10,
           detailLevel: study.detail_level,
           contentType: study.content_type,
         })
       : generateMockMaterials({
           sourceText,
           flashcardCount: study.flashcard_count,
+          quizCount: study.quiz_count ?? 10,
           titleHint: study.title,
         });
 

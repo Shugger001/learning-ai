@@ -14,6 +14,7 @@ export interface CreateStudyRequest {
   title: string;
   content_type: "video" | "pdf" | "audio" | "text";
   flashcard_count: 10 | 20 | 50;
+  quiz_count: 5 | 10 | 15 | 20;
   detail_level: "concise" | "detailed";
   /** Raw pasted text when content_type is "text" */
   text_content?: string;

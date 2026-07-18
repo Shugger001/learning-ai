@@ -4,6 +4,7 @@ export const createStudySchema = z.object({
   title: z.string().min(1).max(200),
   content_type: z.enum(["video", "pdf", "audio", "text"]),
   flashcard_count: z.union([z.literal(10), z.literal(20), z.literal(50)]),
+  quiz_count: z.union([z.literal(5), z.literal(10), z.literal(15), z.literal(20)]),
   detail_level: z.enum(["concise", "detailed"]),
   text_content: z.string().optional(),
 });

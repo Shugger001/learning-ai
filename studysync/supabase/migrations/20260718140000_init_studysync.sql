@@ -42,6 +42,7 @@ create table public.studies (
   file_url text,
   transcript_text text,
   flashcard_count integer not null default 20 check (flashcard_count > 0),
+  quiz_count integer not null default 10 check (quiz_count > 0),
   detail_level public.detail_level not null default 'detailed',
   error_message text,
   processing_progress integer not null default 0 check (

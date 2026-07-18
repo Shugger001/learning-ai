@@ -130,6 +130,7 @@ export async function POST(request: Request) {
       file_url: fileUrl,
       transcript_text: transcriptText,
       flashcard_count: meta.flashcard_count,
+      quiz_count: meta.quiz_count,
       detail_level: meta.detail_level,
       processing_progress: 5,
     })

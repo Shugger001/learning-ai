@@ -80,6 +80,7 @@ export function NewStudyModal({ open, onOpenChange }: NewStudyModalProps) {
   const [textContent, setTextContent] = useState("");
   const [title, setTitle] = useState("");
   const [flashcardCount, setFlashcardCount] = useState<10 | 20 | 50>(20);
+  const [quizCount, setQuizCount] = useState<5 | 10 | 15 | 20>(10);
   const [detailLevel, setDetailLevel] = useState<DetailLevel>("detailed");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -134,6 +135,7 @@ export function NewStudyModal({ open, onOpenChange }: NewStudyModalProps) {
     setTextContent("");
     setTitle("");
     setFlashcardCount(20);
+    setQuizCount(10);
     setDetailLevel("detailed");
     setSubmitting(false);
     setError(null);
@@ -156,6 +158,7 @@ export function NewStudyModal({ open, onOpenChange }: NewStudyModalProps) {
         title: title || "Untitled Study",
         content_type: contentType,
         flashcard_count: flashcardCount,
+        quiz_count: quizCount,
         detail_level: detailLevel,
         text_content: contentType === "text" ? textContent : undefined,
       })
@@ -290,6 +293,23 @@ export function NewStudyModal({ open, onOpenChange }: NewStudyModalProps) {
                     size="sm"
                     onClick={() => setFlashcardCount(n)}
                     aria-pressed={flashcardCount === n}
+                  >
+                    {n}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Number of quiz questions</Label>
+              <div className="flex gap-2">
+                {([5, 10, 15, 20] as const).map((n) => (
+                  <Button
+                    key={n}
+                    type="button"
+                    variant={quizCount === n ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setQuizCount(n)}
+                    aria-pressed={quizCount === n}
                   >
                     {n}
                   </Button>

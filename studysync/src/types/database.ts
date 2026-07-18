@@ -22,6 +22,7 @@ export interface Study {
   file_url: string | null;
   transcript_text: string | null;
   flashcard_count: number;
+  quiz_count: number;
   detail_level: DetailLevel;
   error_message: string | null;
   processing_progress: number;
