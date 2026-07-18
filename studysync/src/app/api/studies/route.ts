@@ -1,12 +1,12 @@
-export const maxDuration = 60;
-export const dynamic = "force-dynamic";
-
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { createStudySchema } from "@/lib/validations/study";
 import { fetchYouTubeTranscript } from "@/lib/ai/youtube";
 import { FREE_LIMITS, isPro } from "@/lib/billing/limits";
+
+export const maxDuration = 60;
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   const supabase = createClient();
