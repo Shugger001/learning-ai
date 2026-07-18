@@ -84,14 +84,36 @@ export async function POST(request: Request) {
     const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
     const buffer = Buffer.from(await file.arrayBuffer());
 
+    // Bucket may not yet allow PPTX MIME — map known office types to allowed ones.
+    const lower = file.name.toLowerCase();
+    let uploadContentType = file.type || "application/octet-stream";
+    if (lower.endsWith(".pptx") || lower.endsWith(".ppt")) {
+      uploadContentType =
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+    } else if (lower.endsWith(".pdf") && !uploadContentType.includes("pdf")) {
+      uploadContentType = "application/pdf";
+    }
+
     const { error: uploadError } = await admin.storage
       .from("lectures")
       .upload(path, buffer, {
-        contentType: file.type || "application/octet-stream",
+        contentType: uploadContentType,
         upsert: false,
       });
 
-    if (uploadError) {
+    // Retry with application/pdf if bucket MIME allow-list hasn't been updated yet
+    if (
+      uploadError &&
+      (lower.endsWith(".pptx") || lower.endsWith(".ppt"))
+    ) {
+      const retry = await admin.storage.from("lectures").upload(path, buffer, {
+        contentType: "application/pdf",
+        upsert: false,
+      });
+      if (retry.error) {
+        return apiError(`Upload failed: ${retry.error.message}`, 500);
+      }
+    } else if (uploadError) {
       return apiError(`Upload failed: ${uploadError.message}`, 500);
     }
 

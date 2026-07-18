@@ -21,6 +21,10 @@ function statusVariant(status: StudyStatus): "secondary" | "success" | "destruct
 
 export function StudyCard({ study }: { study: Study }) {
   const Icon = ICONS[study.content_type];
+  const kindLabel =
+    study.content_type === "pdf" && /\.pptx?$/i.test(study.file_url ?? "")
+      ? "PPTX"
+      : study.content_type;
 
   return (
     <Link href={`/study/${study.id}`} className="group block h-full">
@@ -44,7 +48,7 @@ export function StudyCard({ study }: { study: Study }) {
               year: "numeric",
             })}
             {" · "}
-            <span className="capitalize">{study.content_type}</span>
+            <span className="capitalize">{kindLabel}</span>
           </p>
         </CardContent>
       </Card>

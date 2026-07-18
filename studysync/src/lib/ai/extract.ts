@@ -1,5 +1,10 @@
 import { transcribeAudio } from "@/lib/ai/generate";
+import { extractTextFromPptx } from "@/lib/ai/pptx";
 import type { ContentType } from "@/types/database";
+
+function isPptxFilename(filename: string): boolean {
+  return /\.pptx?$/i.test(filename);
+}
 
 export async function extractTextFromBuffer(params: {
   buffer: Buffer;
@@ -14,6 +19,10 @@ export async function extractTextFromBuffer(params: {
   }
 
   if (contentType === "pdf") {
+    if (isPptxFilename(filename)) {
+      return extractTextFromPptx(buffer);
+    }
+
     const { PDFParse } = await import("pdf-parse");
     const parser = new PDFParse({ data: new Uint8Array(buffer) });
     try {

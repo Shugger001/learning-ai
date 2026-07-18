@@ -374,6 +374,8 @@ values (
   524288000, -- 500 MB
   array[
     'application/pdf',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'application/vnd.ms-powerpoint',
     'video/mp4',
     'video/webm',
     'video/quicktime',

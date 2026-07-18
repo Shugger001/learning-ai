@@ -46,13 +46,16 @@ const CONTENT_TYPES: {
   },
   {
     type: "pdf",
-    label: "PDF",
+    label: "PDF / PPTX",
     icon: FileText,
-    // Some browsers report PDFs as octet-stream or empty MIME — accept by extension too.
     accept: {
       "application/pdf": [".pdf"],
       "application/x-pdf": [".pdf"],
-      "application/octet-stream": [".pdf"],
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation": [
+        ".pptx",
+      ],
+      "application/vnd.ms-powerpoint": [".ppt", ".pptx"],
+      "application/octet-stream": [".pdf", ".pptx", ".ppt"],
     },
   },
   {
@@ -102,7 +105,7 @@ export function NewStudyModal({ open, onOpenChange }: NewStudyModalProps) {
       if (rejection) {
         const name = rejection.file.name;
         setError(
-          `Could not load “${name}”. Use a PDF under 50 MB (or the matching type for video/audio).`
+          `Could not load “${name}”. For slides, use PDF or PowerPoint (.pptx) under 50 MB.`
         );
       }
     },
