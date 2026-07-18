@@ -14,6 +14,15 @@ const DEMO = {
 export function LandingProductMock() {
   const [flipped, setFlipped] = useState(false);
   const [rating, setRating] = useState(2);
+  const [tabIdx, setTabIdx] = useState(1);
+  const tabs = ["Notes", "Flashcards", "Quiz", "Chat"];
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setTabIdx((i) => (i + 1) % tabs.length);
+    }, 3200);
+    return () => clearInterval(id);
+  }, [tabs.length]);
 
   useEffect(() => {
     let cancelled = false;
@@ -51,16 +60,23 @@ export function LandingProductMock() {
   return (
     <div className="border border-white/15 bg-white/[0.04] p-5 backdrop-blur-sm sm:p-7">
       <div className="mb-5 flex gap-2 text-xs font-medium tracking-wide text-white/50">
-        {["Notes", "Flashcards", "Quiz", "Chat"].map((tab, i) => (
+        {tabs.map((tab, i) => (
           <span
             key={tab}
             className={
-              i === 1
-                ? "relative border-b border-[hsl(174_45%_55%)] pb-1 text-white"
-                : "pb-1"
+              i === tabIdx
+                ? "relative pb-1 text-white"
+                : "relative pb-1"
             }
           >
             {tab}
+            {i === tabIdx ? (
+              <motion.span
+                layoutId="landing-mock-tab"
+                className="absolute inset-x-0 -bottom-px h-px bg-[hsl(174_45%_55%)]"
+                transition={{ type: "spring", stiffness: 380, damping: 30 }}
+              />
+            ) : null}
           </span>
         ))}
       </div>

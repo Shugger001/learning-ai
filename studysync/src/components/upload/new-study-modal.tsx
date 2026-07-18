@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDropzone } from "react-dropzone";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   FileText,
   Link2,
@@ -360,6 +361,26 @@ export function NewStudyModal({
           </DialogDescription>
         </DialogHeader>
 
+        <div className="mb-2 flex gap-1.5" aria-hidden>
+          {[1, 2, 3].map((n) => (
+            <span
+              key={n}
+              className={cn(
+                "h-1 flex-1 transition-colors",
+                step >= n ? "bg-primary" : "bg-muted"
+              )}
+            />
+          ))}
+        </div>
+
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={step}
+            initial={{ opacity: 0, x: 16 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -12 }}
+            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+          >
         {step === 1 ? (
           <div className="grid grid-cols-2 gap-3" role="listbox">
             {CONTENT_TYPES.map(({ type, label, icon: Icon }) => (
@@ -544,6 +565,8 @@ export function NewStudyModal({
             </div>
           </div>
         ) : null}
+          </motion.div>
+        </AnimatePresence>
 
         {error ? (
           <p className="text-sm text-destructive" role="alert">

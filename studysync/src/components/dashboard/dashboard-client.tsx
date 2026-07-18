@@ -22,6 +22,7 @@ import { FolderBar } from "@/components/dashboard/folder-bar";
 import { FlashcardsPanel } from "@/components/study/flashcards-panel";
 import { Button } from "@/components/ui/button";
 import { ProcessingBar } from "@/components/ui/processing-bar";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import { cn } from "@/lib/utils/cn";
 import { FREE_LIMITS, type UsageRemaining } from "@/lib/billing/limits";
 import type { ApiResponse } from "@/types/api";
@@ -116,8 +117,17 @@ export function DashboardClient({
   const [dueCards, setDueCards] = useState<Flashcard[]>([]);
   const [dueLoading, setDueLoading] = useState(false);
   const [dueCount, setDueCount] = useState(dueToday);
+  const [tipIndex, setTipIndex] = useState(0);
 
   const firstName = userName?.trim().split(/\s+/)[0] || null;
+
+  useEffect(() => {
+    setStudies(initialStudies);
+  }, [initialStudies]);
+
+  useEffect(() => {
+    setDueCount(dueToday);
+  }, [dueToday]);
 
   useEffect(() => {
     if (searchParams.get("new") === "1") {
@@ -126,6 +136,20 @@ export function DashboardClient({
       router.replace("/dashboard", { scroll: false });
     }
   }, [searchParams, router]);
+
+  useEffect(() => {
+    const hasProcessing = studies.some((s) => s.status === "processing");
+    if (!hasProcessing) return;
+    const id = setInterval(() => router.refresh(), 3500);
+    return () => clearInterval(id);
+  }, [studies, router]);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setTipIndex((i) => (i + 1) % TIPS.length);
+    }, 5000);
+    return () => clearInterval(id);
+  }, []);
 
   const summaryByStudy = useMemo(() => {
     const map = new Map<string, string>();
@@ -169,7 +193,7 @@ export function DashboardClient({
     return list;
   }, [studies, filter, folderId]);
 
-  const tip = TIPS[new Date().getDate() % TIPS.length];
+  const tip = TIPS[tipIndex];
 
   function openNew(type?: ContentType) {
     setInitialType(type ?? null);
@@ -318,14 +342,19 @@ export function DashboardClient({
                 { label: "Due", value: dueCount },
                 { label: "Ready", value: stats.complete },
               ].map((item) => (
-                <div key={item.label}>
+                <motion.div
+                  key={item.label}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4 }}
+                >
                   <dt className="text-xs uppercase tracking-wide text-muted-foreground">
                     {item.label}
                   </dt>
                   <dd className="font-display mt-1 text-2xl font-semibold tabular-nums">
-                    {item.value}
+                    <AnimatedNumber value={item.value} />
                   </dd>
-                </div>
+                </motion.div>
               ))}
             </dl>
           ) : null}
@@ -393,11 +422,18 @@ export function DashboardClient({
           </Button>
         </div>
         <ul className="grid gap-3 sm:grid-cols-2">
-          {PRIMARY_START.map(({ type, label, hint, icon: Icon }) => (
-            <li key={type}>
-              <button
+          {PRIMARY_START.map(({ type, label, hint, icon: Icon }, i) => (
+            <motion.li
+              key={type}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.06, duration: 0.35 }}
+            >
+              <motion.button
                 type="button"
                 onClick={() => openNew(type)}
+                whileHover={{ y: -3 }}
+                whileTap={{ scale: 0.99 }}
                 className="group flex w-full items-start gap-3 border border-border/70 bg-card/40 p-4 text-left transition-colors hover:border-primary/40 hover:bg-accent/30"
               >
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center border border-border/60 text-muted-foreground transition-colors group-hover:border-primary/40 group-hover:text-primary">
@@ -411,26 +447,34 @@ export function DashboardClient({
                     {hint}
                   </span>
                 </span>
-              </button>
-            </li>
+              </motion.button>
+            </motion.li>
           ))}
         </ul>
-        {showMoreFormats ? (
-          <ul className="mt-3 grid gap-2 sm:grid-cols-3">
-            {MORE_FORMATS.map(({ type, label, icon: Icon }) => (
-              <li key={type}>
-                <button
-                  type="button"
-                  onClick={() => openNew(type)}
-                  className="flex w-full items-center gap-2 border border-dashed border-border/70 px-3 py-2.5 text-left text-sm hover:border-primary/35 hover:bg-muted/30"
-                >
-                  <Icon className="h-4 w-4 text-muted-foreground" />
-                  {label}
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : null}
+        <AnimatePresence>
+          {showMoreFormats ? (
+            <motion.ul
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mt-3 grid gap-2 overflow-hidden sm:grid-cols-3"
+            >
+              {MORE_FORMATS.map(({ type, label, icon: Icon }) => (
+                <li key={type}>
+                  <motion.button
+                    type="button"
+                    onClick={() => openNew(type)}
+                    whileHover={{ y: -2 }}
+                    className="flex w-full items-center gap-2 border border-dashed border-border/70 px-3 py-2.5 text-left text-sm hover:border-primary/35 hover:bg-muted/30"
+                  >
+                    <Icon className="h-4 w-4 text-muted-foreground" />
+                    {label}
+                  </motion.button>
+                </li>
+              ))}
+            </motion.ul>
+          ) : null}
+        </AnimatePresence>
       </section>
 
       <div className="mt-10">
@@ -579,13 +623,20 @@ export function DashboardClient({
                     aria-selected={filter === item.id}
                     onClick={() => setFilter(item.id)}
                     className={cn(
-                      "border-b-2 px-3 py-2 text-sm font-medium transition-colors",
+                      "relative px-3 py-2 text-sm font-medium transition-colors",
                       filter === item.id
-                        ? "border-primary text-foreground"
-                        : "border-transparent text-muted-foreground hover:text-foreground"
+                        ? "text-foreground"
+                        : "text-muted-foreground hover:text-foreground"
                     )}
                   >
                     {item.label}
+                    {filter === item.id ? (
+                      <motion.span
+                        layoutId="dash-filter-underline"
+                        className="absolute inset-x-2 bottom-0 h-0.5 bg-primary"
+                        transition={{ type: "spring", stiffness: 420, damping: 32 }}
+                      />
+                    ) : null}
                   </button>
                 ))}
               </div>
@@ -657,7 +708,20 @@ export function DashboardClient({
             )}
           </section>
 
-          <p className="mt-12 text-sm text-muted-foreground">{tip}</p>
+          <div className="mt-12 h-6 overflow-hidden">
+            <AnimatePresence mode="wait">
+              <motion.p
+                key={tip}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.35 }}
+                className="text-sm text-muted-foreground"
+              >
+                {tip}
+              </motion.p>
+            </AnimatePresence>
+          </div>
         </>
       )}
 

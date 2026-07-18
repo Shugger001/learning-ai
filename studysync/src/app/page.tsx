@@ -1,9 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { motion } from "framer-motion";
-import { ArrowRight } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { ArrowDown, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LandingProductMock } from "@/components/landing/product-mock";
 
@@ -12,15 +13,30 @@ const HERO_IMAGE =
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
+const HEADLINES = [
+  "Lectures become lasting memory.",
+  "Upload once. Practice every day.",
+  "Notes, cards, quiz, chat — one pack.",
+];
+
 export default function LandingPage() {
+  const [headlineIdx, setHeadlineIdx] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setHeadlineIdx((i) => (i + 1) % HEADLINES.length);
+    }, 3800);
+    return () => clearInterval(id);
+  }, []);
+
   return (
     <div className="relative min-h-screen">
       <section className="relative isolate min-h-[100svh] overflow-hidden">
         <motion.div
           className="absolute inset-0"
-          initial={{ scale: 1.04 }}
-          animate={{ scale: 1 }}
-          transition={{ duration: 1.4, ease: EASE }}
+          initial={{ scale: 1 }}
+          animate={{ scale: 1.08 }}
+          transition={{ duration: 22, ease: "linear", repeat: Infinity, repeatType: "reverse" }}
         >
           <Image
             src={HERO_IMAGE}
@@ -33,7 +49,12 @@ export default function LandingPage() {
           <div className="absolute inset-0 bg-gradient-to-t from-[hsl(222_47%_6%)] via-[hsl(222_40%_8%/0.72)] to-[hsl(222_40%_10%/0.45)]" />
         </motion.div>
 
-        <header className="relative z-10 mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+        <motion.header
+          className="relative z-10 mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: EASE }}
+        >
           <span className="font-display text-lg font-semibold tracking-tight text-white">
             StudySync
           </span>
@@ -54,7 +75,7 @@ export default function LandingPage() {
               <Link href="/signup">Get started</Link>
             </Button>
           </div>
-        </header>
+        </motion.header>
 
         <div className="relative z-10 mx-auto flex min-h-[calc(100svh-4rem)] max-w-6xl flex-col justify-end px-4 pb-16 pt-24 sm:px-6 sm:pb-24">
           <motion.div
@@ -66,9 +87,20 @@ export default function LandingPage() {
             <p className="font-display text-5xl font-semibold leading-[0.95] tracking-tight text-white sm:text-7xl md:text-8xl">
               StudySync
             </p>
-            <h1 className="max-w-xl text-xl font-medium leading-snug text-white/90 sm:text-2xl">
-              Lectures become lasting memory.
-            </h1>
+            <div className="relative h-[3.5rem] overflow-hidden sm:h-[4rem]">
+              <AnimatePresence mode="wait">
+                <motion.h1
+                  key={HEADLINES[headlineIdx]}
+                  className="absolute inset-x-0 max-w-xl text-xl font-medium leading-snug text-white/90 sm:text-2xl"
+                  initial={{ opacity: 0, y: 18 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -14 }}
+                  transition={{ duration: 0.45, ease: EASE }}
+                >
+                  {HEADLINES[headlineIdx]}
+                </motion.h1>
+              </AnimatePresence>
+            </div>
             <p className="max-w-md text-base leading-relaxed text-white/70 sm:text-lg">
               Upload, record, or paste a YouTube link—then study with notes,
               flashcards, chat, and podcasts built for active recall.
@@ -79,30 +111,51 @@ export default function LandingPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.35, ease: EASE }}
             >
-              <Button
-                asChild
-                size="lg"
-                className="h-12 bg-white px-7 text-[hsl(222_47%_8%)] hover:bg-white/90"
-              >
-                <Link href="/signup">
-                  Start studying
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-              <Button
-                asChild
-                variant="outline"
-                size="lg"
-                className="h-12 border-white/30 bg-transparent px-7 text-white hover:bg-white/10 hover:text-white"
-              >
-                <Link href="/login">I have an account</Link>
-              </Button>
+              <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }}>
+                <Button
+                  asChild
+                  size="lg"
+                  className="h-12 bg-white px-7 text-[hsl(222_47%_8%)] hover:bg-white/90"
+                >
+                  <Link href="/signup">
+                    Start studying
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </motion.div>
+              <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }}>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="lg"
+                  className="h-12 border-white/30 bg-transparent px-7 text-white hover:bg-white/10 hover:text-white"
+                >
+                  <Link href="/login">I have an account</Link>
+                </Button>
+              </motion.div>
             </motion.div>
           </motion.div>
+
+          <motion.a
+            href="#how"
+            className="absolute bottom-6 left-1/2 flex -translate-x-1/2 flex-col items-center gap-1 text-xs text-white/55"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1, y: [0, 6, 0] }}
+            transition={{
+              opacity: { delay: 1.2, duration: 0.5 },
+              y: { delay: 1.4, duration: 1.8, repeat: Infinity, ease: "easeInOut" },
+            }}
+          >
+            <span>See how</span>
+            <ArrowDown className="h-3.5 w-3.5" />
+          </motion.a>
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 py-24 sm:px-6 sm:py-32">
+      <section
+        id="how"
+        className="mx-auto max-w-6xl px-4 py-24 sm:px-6 sm:py-32"
+      >
         <motion.div
           className="max-w-xl"
           initial={{ opacity: 0, y: 16 }}
@@ -144,6 +197,7 @@ export default function LandingPage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-40px" }}
               transition={{ duration: 0.5, delay: i * 0.08, ease: EASE }}
+              whileHover={{ y: -4 }}
             >
               <span className="font-display text-sm font-semibold text-primary">
                 {item.step}
@@ -159,11 +213,12 @@ export default function LandingPage() {
         </ol>
       </section>
 
-      {/* Full-bleed product proof — not a card grid */}
       <section className="relative overflow-hidden border-y border-border/70 bg-[hsl(222_47%_7%)] text-white">
-        <div
+        <motion.div
           className="pointer-events-none absolute inset-0 opacity-60"
           aria-hidden
+          animate={{ opacity: [0.45, 0.7, 0.45] }}
+          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
           style={{
             background:
               "radial-gradient(ellipse 70% 80% at 80% 20%, hsl(174 48% 32% / 0.35), transparent 55%), radial-gradient(ellipse 50% 60% at 10% 90%, hsl(210 40% 40% / 0.2), transparent 50%)",

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { motion } from "framer-motion";
 import {
   ArrowUpRight,
   FileAudio,
@@ -122,7 +123,11 @@ export function StudyCard({
   }
 
   return (
-    <div className="group relative h-full">
+    <motion.div
+      className="group relative h-full"
+      whileHover={{ y: -4 }}
+      transition={{ type: "spring", stiffness: 400, damping: 28 }}
+    >
       <Link href={`/study/${study.id}`} className="block h-full">
         <article
           className={cn(
@@ -224,6 +229,6 @@ export function StudyCard({
           </Button>
         </div>
       ) : null}
-    </div>
+    </motion.div>
   );
 }
