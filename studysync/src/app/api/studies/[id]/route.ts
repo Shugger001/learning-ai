@@ -2,10 +2,16 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { resolveStudyFilePaths } from "@/lib/studies/files";
+import { z } from "zod";
 
 interface RouteParams {
   params: { id: string };
 }
+
+const patchStudySchema = z.object({
+  is_favorite: z.boolean().optional(),
+  title: z.string().min(1).max(200).optional(),
+});
 
 export async function GET(_request: Request, { params }: RouteParams) {
   const supabase = createClient();
@@ -49,6 +55,40 @@ export async function GET(_request: Request, { params }: RouteParams) {
     quizzes: quizzes ?? [],
     notes: notes ?? null,
   });
+}
+
+export async function PATCH(request: Request, { params }: RouteParams) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return apiError("Unauthorized", 401);
+
+  const body = await request.json().catch(() => null);
+  const parsed = patchStudySchema.safeParse(body);
+  if (!parsed.success) {
+    return apiError(parsed.error.issues[0]?.message ?? "Invalid input", 400);
+  }
+
+  const { data, error } = await supabase
+    .from("studies")
+    .update(parsed.data)
+    .eq("id", params.id)
+    .eq("user_id", user.id)
+    .select("*")
+    .single();
+
+  if (error) {
+    if (error.message.includes("is_favorite")) {
+      return apiError(
+        "Favorites not enabled yet — run APPLY_SEARCH_FAVORITES.sql",
+        503
+      );
+    }
+    return apiError(error.message, 500);
+  }
+  if (!data) return apiError("Study not found", 404);
+  return apiSuccess(data);
 }
 
 export async function DELETE(_request: Request, { params }: RouteParams) {

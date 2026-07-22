@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { MarkdownMath } from "@/components/ui/markdown-math";
 import { cn } from "@/lib/utils/cn";
+import { enqueueOfflineRating } from "@/lib/pwa/offline-review-queue";
 import type { ApiResponse } from "@/types/api";
 import type { Flashcard } from "@/types/database";
 
@@ -91,26 +92,52 @@ export function FlashcardsPanel({
   const card = queue[safeIndex];
 
   async function rate(srs_rating: SrsRating) {
-    const res = await fetch(`/api/flashcards/${card.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ srs_rating }),
-    });
-    const json = (await res.json()) as ApiResponse<Flashcard>;
-    if (json.success) {
+    const advanceLocal = () => {
       setDirection(1);
       if (compact) {
         setCards((prev) => prev.filter((c) => c.id !== card.id));
         setFlipped(false);
         setIndex(0);
       } else {
-        setCards((prev) =>
-          prev.map((c) => (c.id === card.id ? { ...c, ...json.data } : c))
-        );
         setFlipped(false);
         setIndex((i) => Math.min(queue.length - 1, i + 1));
       }
       onRated?.();
+    };
+
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      enqueueOfflineRating({
+        flashcardId: card.id,
+        srs_rating,
+        queuedAt: new Date().toISOString(),
+      });
+      advanceLocal();
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/flashcards/${card.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ srs_rating }),
+      });
+      const json = (await res.json()) as ApiResponse<Flashcard>;
+      if (json.success) {
+        if (!compact) {
+          setCards((prev) =>
+            prev.map((c) => (c.id === card.id ? { ...c, ...json.data } : c))
+          );
+        }
+        advanceLocal();
+        return;
+      }
+    } catch {
+      enqueueOfflineRating({
+        flashcardId: card.id,
+        srs_rating,
+        queuedAt: new Date().toISOString(),
+      });
+      advanceLocal();
     }
   }
 

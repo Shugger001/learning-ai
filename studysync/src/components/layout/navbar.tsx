@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { LogOut, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { GlobalSearch } from "@/components/search/global-search";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Button } from "@/components/ui/button";
 import {
@@ -49,6 +50,7 @@ export function Navbar({ userEmail, userName }: NavbarProps) {
         </Link>
 
         <div className="flex items-center gap-1.5 sm:gap-2">
+          <GlobalSearch />
           <Button asChild size="sm" className="shrink-0">
             <Link href="/dashboard?new=1">
               <Plus className="h-4 w-4" />

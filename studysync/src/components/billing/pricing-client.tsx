@@ -1,44 +1,51 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Check, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { FREE_LIMITS } from "@/lib/billing/limits";
+import { ProcessingBar } from "@/components/ui/processing-bar";
+import { FREE_LIMITS, type UsageRemaining } from "@/lib/billing/limits";
 import { EASE, fadeUp, staggerContainer, staggerItem } from "@/lib/motion";
 import type { ApiResponse } from "@/types/api";
 import type { PlanType } from "@/types/database";
 
 interface PricingClientProps {
   plan: PlanType;
+  usage: UsageRemaining | null;
 }
 
-export function PricingClient({ plan }: PricingClientProps) {
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
+export function PricingClient({ plan, usage }: PricingClientProps) {
+  const [loading, setLoading] = useState<"upgrade" | "portal" | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   async function upgrade() {
-    setLoading(true);
+    setLoading("upgrade");
     setMessage(null);
     const res = await fetch("/api/billing/checkout", { method: "POST" });
     const json = (await res.json()) as ApiResponse<{
       mode: string;
-      url: string | null;
-      message?: string;
+      url: string;
     }>;
-    setLoading(false);
+    setLoading(null);
     if (!json.success) {
       setMessage(json.error);
       return;
     }
-    if (json.data.url) {
-      window.location.href = json.data.url;
+    window.location.href = json.data.url;
+  }
+
+  async function manage() {
+    setLoading("portal");
+    setMessage(null);
+    const res = await fetch("/api/billing/portal", { method: "POST" });
+    const json = (await res.json()) as ApiResponse<{ url: string }>;
+    setLoading(null);
+    if (!json.success) {
+      setMessage(json.error);
       return;
     }
-    setMessage(json.data.message ?? "Upgraded to Pro.");
-    router.refresh();
+    window.location.href = json.data.url;
   }
 
   return (
@@ -55,6 +62,36 @@ export function PricingClient({ plan }: PricingClientProps) {
           unlimited uploads, chat, and podcasts.
         </p>
       </motion.div>
+
+      {plan === "free" && usage ? (
+        <motion.div
+          className="space-y-3 border border-border/70 bg-card/40 p-5"
+          {...fadeUp}
+        >
+          <h2 className="text-sm font-semibold">Your free usage this period</h2>
+          {(
+            [
+              ["Uploads", usage.uploads, FREE_LIMITS.uploads],
+              ["Chat", usage.chat, FREE_LIMITS.chat],
+              ["Podcasts", usage.podcasts, FREE_LIMITS.podcasts],
+            ] as const
+          ).map(([label, left, limit]) => {
+            const used = Math.max(0, limit - left);
+            const pct = Math.round((used / limit) * 100);
+            return (
+              <div key={label} className="space-y-1.5">
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>{label}</span>
+                  <span>
+                    {used}/{limit} used · {left} left
+                  </span>
+                </div>
+                <ProcessingBar value={pct} shimmer={false} className="h-1.5" />
+              </div>
+            );
+          })}
+        </motion.div>
+      ) : null}
 
       <motion.div
         className="grid gap-4 sm:grid-cols-2"
@@ -124,14 +161,29 @@ export function PricingClient({ plan }: PricingClientProps) {
             </li>
           </ul>
           {plan === "pro" ? (
-            <p className="mt-6 text-sm font-medium text-primary">You&apos;re on Pro</p>
+            <div className="mt-6 space-y-2">
+              <p className="text-sm font-medium text-primary">You&apos;re on Pro</p>
+              <Button
+                className="w-full"
+                variant="outline"
+                onClick={() => void manage()}
+                disabled={loading !== null}
+              >
+                {loading === "portal" ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : null}
+                Manage subscription
+              </Button>
+            </div>
           ) : (
             <Button
               className="mt-6 w-full"
               onClick={() => void upgrade()}
-              disabled={loading}
+              disabled={loading !== null}
             >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {loading === "upgrade" ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : null}
               Upgrade to Pro
             </Button>
           )}
@@ -143,7 +195,7 @@ export function PricingClient({ plan }: PricingClientProps) {
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, ease: EASE }}
-          className="text-center text-sm text-muted-foreground"
+          className="text-center text-sm text-destructive"
           role="status"
         >
           {message}

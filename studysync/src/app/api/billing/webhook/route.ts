@@ -2,6 +2,26 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+async function setPlan(params: {
+  userId?: string | null;
+  customerId?: string | null;
+  plan: "free" | "pro";
+}) {
+  const admin = createAdminClient();
+  const patch = { plan: params.plan };
+
+  if (params.userId) {
+    await admin.from("profiles").update(patch).eq("user_id", params.userId);
+    return;
+  }
+  if (params.customerId) {
+    await admin
+      .from("profiles")
+      .update(patch)
+      .eq("stripe_customer_id", params.customerId);
+  }
+}
+
 export async function POST(request: Request) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
   const key = process.env.STRIPE_SECRET_KEY;
@@ -26,43 +46,38 @@ export async function POST(request: Request) {
     );
   }
 
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object as Stripe.Checkout.Session;
+    const userId = session.metadata?.user_id || session.client_reference_id;
+    if (session.mode === "subscription") {
+      await setPlan({
+        userId,
+        customerId: session.customer ? String(session.customer) : null,
+        plan: "pro",
+      });
+    }
+  }
+
   if (
-    event.type === "checkout.session.completed" ||
-    event.type === "customer.subscription.updated"
+    event.type === "customer.subscription.updated" ||
+    event.type === "customer.subscription.created"
   ) {
-    const obj = event.data.object as
-      | Stripe.Checkout.Session
-      | Stripe.Subscription;
-    let userId =
-      "metadata" in obj ? obj.metadata?.user_id : undefined;
-
-    if (
-      !userId &&
-      event.type === "checkout.session.completed" &&
-      "client_reference_id" in obj
-    ) {
-      userId = obj.client_reference_id ?? undefined;
-    }
-
-    const admin = createAdminClient();
-    if (userId) {
-      await admin.from("profiles").update({ plan: "pro" }).eq("user_id", userId);
-    } else if ("customer" in obj && obj.customer) {
-      await admin
-        .from("profiles")
-        .update({ plan: "pro" })
-        .eq("stripe_customer_id", String(obj.customer));
-    }
+    const sub = event.data.object as Stripe.Subscription;
+    const active = ["active", "trialing"].includes(sub.status);
+    await setPlan({
+      userId: sub.metadata?.user_id,
+      customerId: String(sub.customer),
+      plan: active ? "pro" : "free",
+    });
   }
 
   if (event.type === "customer.subscription.deleted") {
     const sub = event.data.object as Stripe.Subscription;
-    const customerId = String(sub.customer);
-    const admin = createAdminClient();
-    await admin
-      .from("profiles")
-      .update({ plan: "free" })
-      .eq("stripe_customer_id", customerId);
+    await setPlan({
+      userId: sub.metadata?.user_id,
+      customerId: String(sub.customer),
+      plan: "free",
+    });
   }
 
   return NextResponse.json({ received: true });

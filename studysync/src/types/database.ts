@@ -58,6 +58,7 @@ export interface Study {
   detail_level: DetailLevel;
   error_message: string | null;
   processing_progress: number;
+  is_favorite: boolean;
   created_at: string;
   updated_at: string;
 }

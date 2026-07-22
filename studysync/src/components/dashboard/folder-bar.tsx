@@ -19,8 +19,8 @@ import type { Folder, Study } from "@/types/database";
 interface FolderBarProps {
   folders: Folder[];
   studies: Study[];
-  selectedFolderId: string | null;
-  onSelectFolder: (id: string | null) => void;
+  selectedFolderId: string | null | "unfiled";
+  onSelectFolder: (id: string | null | "unfiled") => void;
   onFoldersChange: (folders: Folder[]) => void;
   onStudyMoved: (study: Study) => void;
 }
@@ -105,6 +105,10 @@ export function FolderBar({
     }
   }
 
+  const unfiledCount = studies.filter((s) => !s.folder_id).length;
+  const countIn = (id: string) =>
+    studies.filter((s) => s.folder_id === id).length;
+
   return (
     <section className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -127,6 +131,22 @@ export function FolderBar({
             )}
           >
             All
+            <span className="text-xs text-muted-foreground">{studies.length}</span>
+          </motion.button>
+          <motion.button
+            type="button"
+            variants={staggerItem}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => onSelectFolder("unfiled")}
+            className={cn(
+              "inline-flex items-center gap-1.5 border px-3 py-1.5 text-sm transition-colors",
+              selectedFolderId === "unfiled"
+                ? "border-foreground bg-accent"
+                : "border-border/70 hover:bg-muted/40"
+            )}
+          >
+            Unfiled
+            <span className="text-xs text-muted-foreground">{unfiledCount}</span>
           </motion.button>
           {folders.map((folder) => (
             <motion.button
@@ -145,6 +165,9 @@ export function FolderBar({
             >
               <FolderIcon className="h-3.5 w-3.5" />
               {folder.name}
+              <span className="text-xs text-muted-foreground">
+                {countIn(folder.id)}
+              </span>
             </motion.button>
           ))}
         </motion.div>
@@ -280,9 +303,17 @@ export function FolderBar({
                     size="sm"
                     variant="outline"
                     disabled={!assignStudyId}
-                    onClick={() => void assignToFolder(selectedFolderId)}
+                    onClick={() =>
+                      void assignToFolder(
+                        selectedFolderId === "unfiled" || selectedFolderId === null
+                          ? null
+                          : selectedFolderId
+                      )
+                    }
                   >
-                    {selectedFolderId ? "Move here" : "Remove from folder"}
+                    {selectedFolderId && selectedFolderId !== "unfiled"
+                      ? "Move here"
+                      : "Remove from folder"}
                   </Button>
                 </div>
               ) : null}

@@ -14,6 +14,7 @@ import {
   Clapperboard,
   Loader2,
   RotateCcw,
+  Star,
   Trash2,
 } from "lucide-react";
 import { resolveStudyFilePaths } from "@/lib/studies/files";
@@ -76,11 +77,13 @@ export function StudyCard({
   summary,
   onDeleted,
   onRetried,
+  onUpdated,
 }: {
   study: Study;
   summary?: string;
   onDeleted?: (id: string) => void;
   onRetried?: (study: Study) => void;
+  onUpdated?: (study: Study) => void;
 }) {
   const router = useRouter();
   const { label, icon: Icon } = kindFromStudy(study);
@@ -90,7 +93,23 @@ export function StudyCard({
     day: "numeric",
     year: "numeric",
   });
-  const [busy, setBusy] = useState<"retry" | "delete" | null>(null);
+  const [busy, setBusy] = useState<"retry" | "delete" | "favorite" | null>(
+    null
+  );
+
+  async function toggleFavorite(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setBusy("favorite");
+    const res = await fetch(`/api/studies/${study.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ is_favorite: !study.is_favorite }),
+    });
+    const json = (await res.json()) as ApiResponse<Study>;
+    setBusy(null);
+    if (json.success) onUpdated?.(json.data);
+  }
 
   async function retry(e: React.MouseEvent) {
     e.preventDefault();
@@ -144,16 +163,21 @@ export function StudyCard({
             <div className="flex h-9 w-9 items-center justify-center border border-border/60 bg-muted/40 text-muted-foreground">
               <Icon className="h-4 w-4" aria-hidden />
             </div>
-            <span
-              className={cn(
-                "text-xs font-medium tracking-wide",
-                study.status === "complete" && "text-success",
-                study.status === "processing" && "text-primary",
-                study.status === "error" && "text-destructive"
-              )}
-            >
-              {status}
-            </span>
+            <div className="flex items-center gap-2">
+              {study.is_favorite ? (
+                <Star className="h-3.5 w-3.5 fill-primary text-primary" aria-label="Favorite" />
+              ) : null}
+              <span
+                className={cn(
+                  "text-xs font-medium tracking-wide",
+                  study.status === "complete" && "text-success",
+                  study.status === "processing" && "text-primary",
+                  study.status === "error" && "text-destructive"
+                )}
+              >
+                {status}
+              </span>
+            </div>
           </div>
 
           <h2 className="font-display line-clamp-2 text-lg font-semibold leading-snug tracking-tight">
@@ -195,6 +219,27 @@ export function StudyCard({
           </div>
         </article>
       </Link>
+
+      <Button
+        type="button"
+        size="sm"
+        variant="ghost"
+        className="absolute right-2 top-2 h-8 w-8 bg-background/90 p-0 opacity-0 transition-opacity group-hover:opacity-100"
+        disabled={busy !== null}
+        aria-label={study.is_favorite ? "Unpin favorite" : "Pin favorite"}
+        onClick={(e) => void toggleFavorite(e)}
+      >
+        {busy === "favorite" ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <Star
+            className={cn(
+              "h-3.5 w-3.5",
+              study.is_favorite && "fill-primary text-primary"
+            )}
+          />
+        )}
+      </Button>
 
       {study.status === "error" ? (
         <div className="absolute bottom-3 right-3 flex gap-1">

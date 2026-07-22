@@ -8,6 +8,11 @@ import { FlashcardsPanel } from "@/components/study/flashcards-panel";
 import { QuizPanel } from "@/components/study/quiz-panel";
 import { Button } from "@/components/ui/button";
 import { fadeUp } from "@/lib/motion";
+import {
+  cacheDuePayload,
+  flushOfflineQueue,
+  readDueCache,
+} from "@/lib/pwa/offline-review-queue";
 import type { ApiResponse } from "@/types/api";
 import type { Flashcard, Quiz } from "@/types/database";
 import type { ReviewTodayPayload } from "@/types/review";
@@ -37,16 +42,29 @@ export function DailyReviewClient({
 
   useEffect(() => {
     setRemindersOn(localStorage.getItem(REMINDER_KEY) === "1");
-  }, []);
+    void flushOfflineQueue();
+    cacheDuePayload(initial);
+  }, [initial]);
 
   const refresh = useCallback(async () => {
-    const res = await fetch("/api/review/today");
-    const json = (await res.json()) as ApiResponse<ReviewTodayPayload>;
-    if (!json.success) return;
-    setDueCards(json.data.dueCards);
-    setQuizzes(json.data.quizzes);
-    setDueCount(json.data.dueCount);
-    setQuizStudyId(json.data.quizzes[0]?.study_id ?? null);
+    try {
+      const res = await fetch("/api/review/today");
+      const json = (await res.json()) as ApiResponse<ReviewTodayPayload>;
+      if (!json.success) return;
+      setDueCards(json.data.dueCards);
+      setQuizzes(json.data.quizzes);
+      setDueCount(json.data.dueCount);
+      setQuizStudyId(json.data.quizzes[0]?.study_id ?? null);
+      cacheDuePayload(json.data);
+    } catch {
+      const cached = readDueCache<ReviewTodayPayload>();
+      if (cached) {
+        setDueCards(cached.dueCards);
+        setQuizzes(cached.quizzes);
+        setDueCount(cached.dueCount);
+        setQuizStudyId(cached.quizzes[0]?.study_id ?? null);
+      }
+    }
   }, []);
 
   async function enableReminders() {

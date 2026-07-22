@@ -51,7 +51,10 @@ export default async function DashboardPage() {
     profile = fallback.data;
   }
 
-  const studyRows = (studies as Study[]) ?? [];
+  const studyRows = ((studies as Study[]) ?? []).map((s) => ({
+    ...s,
+    is_favorite: Boolean(s.is_favorite),
+  }));
   const studyIds = studyRows.map((s) => s.id);
   const folders = foldersRes.error
     ? []

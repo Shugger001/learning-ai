@@ -9,6 +9,14 @@ function getStripe() {
   return new Stripe(key);
 }
 
+function proPriceId() {
+  return (
+    process.env.STRIPE_PRO_PRICE_ID ||
+    process.env.STRIPE_CREDITS_PRICE_ID ||
+    ""
+  );
+}
+
 export async function POST() {
   const supabase = createClient();
   const {
@@ -16,23 +24,11 @@ export async function POST() {
   } = await supabase.auth.getUser();
   if (!user) return apiError("Unauthorized", 401);
 
-  if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_CREDITS_PRICE_ID) {
-    // Demo upgrade without Stripe configured
-    let admin;
-    try {
-      admin = createAdminClient();
-    } catch {
-      return apiError("Billing not configured", 500);
-    }
-    await admin
-      .from("profiles")
-      .update({ plan: "pro" })
-      .eq("user_id", user.id);
-    return apiSuccess({
-      mode: "demo",
-      url: null,
-      message: "Upgraded to Pro (demo mode - set Stripe keys for real checkout).",
-    });
+  if (!process.env.STRIPE_SECRET_KEY || !proPriceId()) {
+    return apiError(
+      "Stripe is not configured. Set STRIPE_SECRET_KEY and STRIPE_PRO_PRICE_ID.",
+      503
+    );
   }
 
   try {
@@ -40,9 +36,13 @@ export async function POST() {
     const admin = createAdminClient();
     const { data: profile } = await admin
       .from("profiles")
-      .select("stripe_customer_id")
+      .select("stripe_customer_id, plan")
       .eq("user_id", user.id)
       .single();
+
+    if (profile?.plan === "pro") {
+      return apiError("Already on Pro — use Manage subscription instead.", 400);
+    }
 
     let customerId = profile?.stripe_customer_id;
     if (!customerId) {
@@ -63,9 +63,7 @@ export async function POST() {
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       customer: customerId,
-      line_items: [
-        { price: process.env.STRIPE_CREDITS_PRICE_ID, quantity: 1 },
-      ],
+      line_items: [{ price: proPriceId(), quantity: 1 }],
       success_url: `${origin}/dashboard?upgraded=1`,
       cancel_url: `${origin}/pricing`,
       client_reference_id: user.id,
@@ -75,7 +73,8 @@ export async function POST() {
       },
     });
 
-    return apiSuccess({ mode: "stripe", url: session.url });
+    if (!session.url) return apiError("Checkout session missing URL", 500);
+    return apiSuccess({ mode: "stripe" as const, url: session.url });
   } catch (err) {
     return apiError(
       err instanceof Error ? err.message : "Checkout failed",

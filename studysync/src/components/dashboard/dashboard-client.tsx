@@ -36,7 +36,8 @@ export interface StudySummary {
   summary: string | null;
 }
 
-type LibraryFilter = "all" | "complete" | "processing" | "error";
+type LibraryFilter = "all" | "complete" | "processing" | "error" | "favorites";
+type TypeFilter = "all" | ContentType;
 
 interface DashboardClientProps {
   studies: Study[];
@@ -80,9 +81,19 @@ const MORE_FORMATS: {
 
 const FILTERS: { id: LibraryFilter; label: string }[] = [
   { id: "all", label: "All" },
+  { id: "favorites", label: "Favorites" },
   { id: "complete", label: "Ready" },
   { id: "processing", label: "Generating" },
   { id: "error", label: "Failed" },
+];
+
+const TYPE_FILTERS: { id: TypeFilter; label: string }[] = [
+  { id: "all", label: "Any type" },
+  { id: "youtube", label: "YouTube" },
+  { id: "pdf", label: "PDF / slides" },
+  { id: "audio", label: "Audio" },
+  { id: "video", label: "Video" },
+  { id: "text", label: "Text" },
 ];
 
 const TIPS = [
@@ -108,7 +119,8 @@ export function DashboardClient({
   const [open, setOpen] = useState(false);
   const [initialType, setInitialType] = useState<ContentType | null>(null);
   const [filter, setFilter] = useState<LibraryFilter>("all");
-  const [folderId, setFolderId] = useState<string | null>(null);
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const [folderId, setFolderId] = useState<string | null | "unfiled">(null);
   const [showMoreFormats, setShowMoreFormats] = useState(false);
   const [dueCount, setDueCount] = useState(dueToday);
   const [tipIndex, setTipIndex] = useState(0);
@@ -182,10 +194,21 @@ export function DashboardClient({
 
   const filtered = useMemo(() => {
     let list = studies;
-    if (folderId) list = list.filter((s) => s.folder_id === folderId);
-    if (filter !== "all") list = list.filter((s) => s.status === filter);
-    return list;
-  }, [studies, filter, folderId]);
+    if (folderId === "unfiled") list = list.filter((s) => !s.folder_id);
+    else if (folderId) list = list.filter((s) => s.folder_id === folderId);
+    if (filter === "favorites") list = list.filter((s) => s.is_favorite);
+    else if (filter !== "all") list = list.filter((s) => s.status === filter);
+    if (typeFilter !== "all") {
+      list = list.filter((s) => s.content_type === typeFilter);
+    }
+    return [...list].sort((a, b) => {
+      const fav = Number(!!b.is_favorite) - Number(!!a.is_favorite);
+      if (fav !== 0) return fav;
+      return (
+        new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+      );
+    });
+  }, [studies, filter, folderId, typeFilter]);
 
   const tip = TIPS[tipIndex];
 
@@ -605,6 +628,25 @@ export function DashboardClient({
               </div>
             </div>
 
+            <div className="flex flex-wrap gap-2" aria-label="Filter by type">
+              {TYPE_FILTERS.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setTypeFilter(item.id)}
+                  className={cn(
+                    "border px-2.5 py-1 text-xs transition-colors",
+                    typeFilter === item.id
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "border-border/70 text-muted-foreground hover:bg-muted/40"
+                  )}
+                  aria-pressed={typeFilter === item.id}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+
             {filtered.length === 0 ? (
               <p className="border border-dashed border-border/80 px-5 py-10 text-sm text-muted-foreground">
                 No studies in this filter.
@@ -634,6 +676,11 @@ export function DashboardClient({
                         setStudies((prev) => prev.filter((s) => s.id !== id))
                       }
                       onRetried={(next) =>
+                        setStudies((prev) =>
+                          prev.map((s) => (s.id === next.id ? next : s))
+                        )
+                      }
+                      onUpdated={(next) =>
                         setStudies((prev) =>
                           prev.map((s) => (s.id === next.id ? next : s))
                         )
