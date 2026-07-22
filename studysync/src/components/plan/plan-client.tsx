@@ -94,7 +94,8 @@ export function PlanClient() {
           Week plan
         </h1>
         <p className="max-w-xl text-sm text-muted-foreground">
-          Auto-build sessions from due cards, class assignments, and weak topics.
+          Auto-build sessions from due cards, class assignments, weak topics, and
+          exam countdowns.
         </p>
       </div>
 
@@ -192,6 +193,9 @@ export function PlanClient() {
       <div className="flex flex-wrap gap-2">
         <Button asChild variant="outline">
           <Link href="/calendar">Calendar</Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link href="/exam">Exam campaigns</Link>
         </Button>
         <Button asChild variant="outline">
           <Link href="/review">Review today</Link>

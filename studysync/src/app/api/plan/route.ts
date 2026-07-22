@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { buildWeekPlan, type WeekPlan } from "@/lib/plan/generate";
+import { buildExamSessions } from "@/lib/exam/campaign";
 
 function mondayOf(date = new Date()) {
   const x = new Date(
@@ -153,12 +154,29 @@ async function gatherPlanInputs(weekStart: string) {
     };
   }
 
+  const { data: campaigns } = await supabase
+    .from("exam_campaigns")
+    .select("id, title, exam_at, study_ids")
+    .eq("user_id", user.id)
+    .gte("exam_at", today);
+
+  const examCampaigns = (campaigns ?? []).map((c) => ({
+    id: c.id,
+    title: c.title,
+    examAt: String(c.exam_at).slice(0, 10),
+    studyIds: Array.isArray(c.study_ids)
+      ? (c.study_ids as string[])
+      : [],
+    studyTitles: Object.fromEntries(Array.from(titleById.entries())),
+  }));
+
   return {
     user,
     today,
     cardDays,
     assignments,
     weakStudy,
+    examCampaigns,
     error: null as null,
   };
 }
@@ -218,12 +236,19 @@ export async function POST(request: Request) {
   const inputs = await gatherPlanInputs(weekStart);
   if (!inputs.user) return apiError("Unauthorized", 401);
 
+  const examSessions = buildExamSessions({
+    weekStart,
+    today: inputs.today,
+    campaigns: inputs.examCampaigns ?? [],
+  });
+
   const plan = buildWeekPlan({
     weekStart,
     today: inputs.today,
     cardDays: inputs.cardDays,
     assignments: inputs.assignments,
     weakStudy: inputs.weakStudy,
+    examSessions,
   });
 
   const supabase = createClient();

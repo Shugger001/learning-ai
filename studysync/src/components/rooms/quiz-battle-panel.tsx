@@ -38,6 +38,7 @@ export function QuizBattlePanel({
   const [answered, setAnswered] = useState(0);
   const [done, setDone] = useState(false);
   const [picked, setPicked] = useState<string | null>(null);
+  const xpAwardedRef = useRef(false);
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [board, setBoard] = useState<ScoreRow[]>([]);
   const [selfId, setSelfId] = useState<string | null>(null);
@@ -182,9 +183,16 @@ export function QuizBattlePanel({
     void publishScore({ score, answered, done });
   }, [battle, score, answered, done, publishScore]);
 
+  useEffect(() => {
+    if (!done || xpAwardedRef.current) return;
+    xpAwardedRef.current = true;
+    void fetch("/api/xp/battle", { method: "POST" }).catch(() => undefined);
+  }, [done]);
+
   async function startBattle() {
     setBusy(true);
     setError(null);
+    xpAwardedRef.current = false;
     const res = await fetch(`/api/rooms/${encodeURIComponent(roomCode)}/battle`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

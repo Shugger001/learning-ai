@@ -76,6 +76,7 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
   const [followCardId, setFollowCardId] = useState<string | null>(null);
 
   const examMode = searchParams.get("exam") === "1";
+  const bossMode = searchParams.get("boss") === "1";
   const roomCode = searchParams.get("room");
   const examMinutes = Math.min(
     120,
@@ -506,7 +507,8 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
               <QuizPanel
                 studyId={study.id}
                 quizzes={study.quizzes}
-                examMode={examMode}
+                examMode={examMode || bossMode}
+                bossMode={bossMode}
                 examMinutes={examMinutes}
                 initialReviewIds={examWrongIds}
               />

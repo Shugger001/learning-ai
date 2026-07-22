@@ -13,6 +13,7 @@ import {
   resolveStudyFilePaths,
 } from "@/lib/studies/files";
 import type { ContentType } from "@/types/database";
+import { contentKey } from "@/lib/classes/deck-sync";
 
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
@@ -168,6 +169,7 @@ export async function POST(request: Request) {
         answer: card.answer,
         difficulty: "medium" as const,
         position: index,
+        content_key: contentKey(card.question),
         ease: 2.5,
         interval_days: 0,
         reps: 0,
@@ -186,6 +188,7 @@ export async function POST(request: Request) {
         explanation: quiz.explanation,
         quiz_type: quiz.quiz_type ?? "mcq",
         position: index,
+        content_key: contentKey(quiz.question),
       }))
     );
 
@@ -199,6 +202,7 @@ export async function POST(request: Request) {
         processing_progress: 100,
         error_message: null,
         transcript_text: sourceText,
+        pack_version: Number(study.pack_version ?? 1) + 1,
       })
       .eq("id", study_id);
 

@@ -51,6 +51,7 @@ interface QuizPanelProps {
   readOnly?: boolean;
   /** Timed exam: hide per-question feedback until the end. */
   examMode?: boolean;
+  bossMode?: boolean;
   /** Exam duration in minutes (default 20). */
   examMinutes?: number;
   /** Seed queue from wrong ids (e.g. last attempt). */
@@ -72,6 +73,7 @@ export function QuizPanel({
   quizzes: initial,
   readOnly = false,
   examMode = false,
+  bossMode = false,
   examMinutes = 20,
   initialReviewIds = null,
   maxQuestions,
@@ -189,6 +191,7 @@ export function QuizPanel({
         score: correct,
         total,
         wrong_quiz_ids: allWrong,
+        boss: bossMode,
       }),
     });
     const json = (await res.json()) as ApiResponse<QuizAttempt>;
@@ -197,7 +200,7 @@ export function QuizPanel({
       setSavedAttempt(true);
     }
     finishingRef.current = false;
-  }, [queue, results, readOnly, studyId, onComplete]);
+  }, [queue, results, readOnly, studyId, onComplete, bossMode]);
 
   finishSessionRef.current = finishSession;
 

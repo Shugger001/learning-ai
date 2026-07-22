@@ -103,6 +103,14 @@ export function Navbar({ userEmail, userName }: NavbarProps) {
             size="sm"
             className="hidden sm:inline-flex"
           >
+            <Link href="/exam">Exam</Link>
+          </Button>
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            className="hidden sm:inline-flex"
+          >
             <Link href="/progress">Progress</Link>
           </Button>
           <Button
@@ -155,6 +163,9 @@ export function Navbar({ userEmail, userName }: NavbarProps) {
               </DropdownMenuItem>
               <DropdownMenuItem asChild className="cursor-pointer">
                 <Link href="/review">Review today</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild className="cursor-pointer">
+                <Link href="/exam">Exam campaigns</Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild className="cursor-pointer">
                 <Link href="/progress">Progress</Link>

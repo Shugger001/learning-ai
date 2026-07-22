@@ -70,6 +70,7 @@ export function ClassDetailClient() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [openingId, setOpeningId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/classes/${classId}`);
@@ -234,6 +235,32 @@ export function ClassDetailClient() {
       method: "DELETE",
     });
     await load();
+  }
+
+  async function openAssignment(assignmentId: string) {
+    setOpeningId(assignmentId);
+    setError(null);
+    const res = await fetch(
+      `/api/classes/${classId}/assignments/${assignmentId}/open`,
+      { method: "POST" }
+    );
+    const json = (await res.json()) as ApiResponse<{
+      studyId: string;
+      synced?: boolean;
+      created?: boolean;
+      isCopy?: boolean;
+    }>;
+    setOpeningId(null);
+    if (!json.success) {
+      setError(json.error);
+      return;
+    }
+    if (json.data.created) {
+      setMessage("Personal pack copy ready — your SRS progress is yours.");
+    } else if (json.data.synced && json.data.isCopy) {
+      setMessage("Pack synced from teacher — your card memory was kept.");
+    }
+    router.push(`/study/${json.data.studyId}`);
   }
 
   async function removeClass() {
@@ -497,8 +524,17 @@ export function ClassDetailClient() {
                       </p>
                     </div>
                     <div className="flex gap-2">
-                      <Button asChild size="sm" variant="outline">
-                        <Link href={`/study/${a.study_id}`}>Open</Link>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={openingId === a.id}
+                        onClick={() => void openAssignment(a.id)}
+                      >
+                        {openingId === a.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : null}
+                        {isOwner ? "Open" : "Open & sync"}
                       </Button>
                       {isOwner ? (
                         <Button

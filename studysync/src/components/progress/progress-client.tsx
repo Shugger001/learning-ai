@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Flame, Layers, ListChecks, Target } from "lucide-react";
+import { Flame, Layers, ListChecks, Target, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { fadeUp, staggerContainer, staggerItem } from "@/lib/motion";
@@ -16,6 +16,15 @@ export interface ProgressPayload {
     longest: number;
     lastStudyDate: string | null;
   };
+  xp: number;
+  level: number;
+  xpToNext: number;
+  achievements: {
+    badge_key: string;
+    title: string;
+    description: string;
+    unlocked_at: string;
+  }[];
   dueCount: number;
   dueCards: {
     id: string;
@@ -160,17 +169,23 @@ export function ProgressClient({ data }: { data: ProgressPayload }) {
           Progress hub
         </h1>
         <p className="max-w-xl text-[15px] text-muted-foreground">
-          Due cards, weak spots, and your study streak in one place.
+          XP, badges, due cards, and your study streak in one place.
         </p>
       </div>
 
       <motion.dl
-        className="grid gap-4 sm:grid-cols-4"
+        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5"
         variants={staggerContainer}
         initial="hidden"
         animate="show"
       >
         {[
+          {
+            label: "Level",
+            value: String(data.level),
+            hint: `${data.xp} XP · ${data.xpToNext} to next`,
+            icon: Trophy,
+          },
           {
             label: "Streak",
             value: `${data.streak.current}d`,
@@ -213,9 +228,41 @@ export function ProgressClient({ data }: { data: ProgressPayload }) {
         ))}
       </motion.dl>
 
+      {data.achievements.length > 0 ? (
+        <section className="space-y-3">
+          <h2 className="font-display text-xl font-semibold tracking-tight">
+            Achievements
+          </h2>
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {data.achievements.map((a) => (
+              <li
+                key={a.badge_key}
+                className="border border-border/70 bg-card/40 p-4"
+              >
+                <p className="text-sm font-medium">{a.title}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {a.description}
+                </p>
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  Unlocked{" "}
+                  {new Date(a.unlocked_at).toLocaleDateString()}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          Earn badges by reviewing cards, acing quizzes, and finishing battles.
+        </p>
+      )}
+
       <div className="flex flex-wrap gap-2">
         <Button asChild>
           <Link href="/review">Review today</Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link href="/exam">Exam campaign</Link>
         </Button>
         <Button asChild variant="outline">
           <Link href="/plan">Week plan</Link>

@@ -10,6 +10,7 @@ const postSchema = z.object({
   score: z.number().int().min(0),
   total: z.number().int().min(1),
   wrong_quiz_ids: z.array(z.string().uuid()).default([]),
+  boss: z.boolean().optional(),
 });
 
 export async function GET(_request: Request, { params }: RouteParams) {
@@ -73,7 +74,7 @@ export async function POST(request: Request, { params }: RouteParams) {
 
   if (!study) return apiError("Study not found", 404);
 
-  const { score, total, wrong_quiz_ids } = parsed.data;
+  const { score, total, wrong_quiz_ids, boss } = parsed.data;
   if (score > total) return apiError("Score cannot exceed total", 400);
 
   const { data, error } = await supabase
@@ -103,7 +104,18 @@ export async function POST(request: Request, { params }: RouteParams) {
   }
 
   const { recordStudyActivity } = await import("@/lib/progress/activity");
-  await recordStudyActivity(user.id, { quizzesTaken: 1 });
+  await recordStudyActivity(user.id, {
+    quizzesTaken: 1,
+    studyId: params.id,
+  });
+
+  const { awardXp } = await import("@/lib/progress/xp");
+  await awardXp(user.id, {
+    type: "quiz",
+    score,
+    total,
+    boss: Boolean(boss),
+  });
 
   return apiSuccess(data, 201);
 }

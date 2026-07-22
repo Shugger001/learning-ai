@@ -1,7 +1,7 @@
 export type PlanSession = {
   date: string;
   title: string;
-  kind: "cards" | "assignment" | "weak";
+  kind: "cards" | "assignment" | "weak" | "exam_ramp" | "boss";
   studyId?: string | null;
   cardsTarget: number;
   minutes: number;
@@ -34,6 +34,7 @@ export function buildWeekPlan(params: {
     className: string;
   }[];
   weakStudy?: { studyId: string; title: string; misses: number } | null;
+  examSessions?: PlanSession[];
 }): WeekPlan {
   const sessions: PlanSession[] = [];
   const days = Array.from({ length: 7 }, (_, i) => addDays(params.weekStart, i));
@@ -136,6 +137,10 @@ export function buildWeekPlan(params: {
       href: `/study/${params.weakStudy.studyId}?tab=chat`,
       note: `${params.weakStudy.misses} recent quiz misses — tutor recommended`,
     });
+  }
+
+  if (params.examSessions?.length) {
+    sessions.push(...params.examSessions);
   }
 
   sessions.sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title));

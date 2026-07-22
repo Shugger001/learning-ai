@@ -27,8 +27,38 @@ export interface Profile {
   longest_streak: number;
   last_study_date: string | null;
   onboarding_completed: boolean;
+  xp: number;
+  level: number;
+  progress_share_token?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface UserAchievement {
+  id: string;
+  user_id: string;
+  badge_key: string;
+  unlocked_at: string;
+}
+
+export interface ExamCampaign {
+  id: string;
+  user_id: string;
+  title: string;
+  exam_at: string;
+  study_ids: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AssignmentCopy {
+  id: string;
+  assignment_id: string;
+  user_id: string;
+  study_id: string;
+  synced_at: string | null;
+  teacher_pack_version: number;
+  created_at: string;
 }
 
 export interface QuizAttempt {
@@ -66,6 +96,8 @@ export interface Study {
   error_message: string | null;
   processing_progress: number;
   is_favorite: boolean;
+  source_study_id?: string | null;
+  pack_version?: number;
   created_at: string;
   updated_at: string;
 }
@@ -81,6 +113,7 @@ export interface Flashcard {
   interval_days: number;
   reps: number;
   due_at: string;
+  content_key?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -94,6 +127,7 @@ export interface Quiz {
   explanation: string | null;
   quiz_type: QuizType;
   position: number;
+  content_key?: string | null;
   created_at: string;
   updated_at: string;
 }

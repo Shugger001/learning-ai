@@ -1,5 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
-import { ProgressClient, type ProgressPayload } from "@/components/progress/progress-client";
+import {
+  ProgressClient,
+  type ProgressPayload,
+} from "@/components/progress/progress-client";
+import { BADGE_CATALOG, levelFromXp, xpToNextLevel } from "@/lib/progress/xp";
 
 export default async function ProgressPage() {
   const supabase = createClient();
@@ -16,10 +20,11 @@ export default async function ProgressPage() {
     attemptsRes,
     activityRes,
     hardCardsRes,
+    achievementsRes,
   ] = await Promise.all([
     supabase
       .from("profiles")
-      .select("current_streak, longest_streak, last_study_date")
+      .select("current_streak, longest_streak, last_study_date, xp, level")
       .eq("user_id", user!.id)
       .maybeSingle(),
     supabase
@@ -58,6 +63,11 @@ export default async function ProgressPage() {
       .lt("ease", 2.2)
       .order("ease", { ascending: true })
       .limit(12),
+    supabase
+      .from("user_achievements")
+      .select("badge_key, unlocked_at")
+      .eq("user_id", user!.id)
+      .order("unlocked_at", { ascending: false }),
   ]);
 
   const studies = studiesRes.data ?? [];
@@ -72,7 +82,10 @@ export default async function ProgressPage() {
   }));
 
   const weakCards = (hardCardsRes.data ?? []).map((c) => {
-    const nested = c.studies as unknown as { title?: string } | { title?: string }[] | null;
+    const nested = c.studies as unknown as
+      | { title?: string }
+      | { title?: string }[]
+      | null;
     const study = Array.isArray(nested) ? nested[0] : nested;
     return {
       id: c.id,
@@ -86,6 +99,9 @@ export default async function ProgressPage() {
 
   const attempts = attemptsRes.error ? [] : (attemptsRes.data ?? []);
   const activity = activityRes.error ? [] : (activityRes.data ?? []);
+  const achievementRows = achievementsRes.error
+    ? []
+    : (achievementsRes.data ?? []);
 
   const weakTopics = new Map<
     string,
@@ -103,12 +119,30 @@ export default async function ProgressPage() {
     });
   }
 
+  const xp = Number(profileRes.data?.xp ?? 0);
+  const level = Number(profileRes.data?.level ?? levelFromXp(xp));
+
   const payload: ProgressPayload = {
     streak: {
       current: Number(profileRes.data?.current_streak ?? 0),
       longest: Number(profileRes.data?.longest_streak ?? 0),
       lastStudyDate: profileRes.data?.last_study_date ?? null,
     },
+    xp,
+    level,
+    xpToNext: xpToNextLevel(xp),
+    achievements: achievementRows.map((row) => {
+      const meta = BADGE_CATALOG[row.badge_key] ?? {
+        title: row.badge_key,
+        description: "Unlocked",
+      };
+      return {
+        badge_key: row.badge_key,
+        title: meta.title,
+        description: meta.description,
+        unlocked_at: row.unlocked_at,
+      };
+    }),
     dueCount: dueCards.length,
     dueCards: dueCards.slice(0, 8),
     weakCards,

@@ -86,7 +86,12 @@ export async function recordStudyActivity(
     })
     .eq("user_id", userId);
 
-  // Bump progress only for assignments that include this study
+  if (cards > 0) {
+    const { awardXp } = await import("@/lib/progress/xp");
+    await awardXp(userId, { type: "card_review", streak: current });
+  }
+
+  // Bump progress for teacher packs and student assignment copies
   if (cards > 0 && delta.studyId) {
     const { assignmentGoal } = await import("@/lib/classes/gradebook");
     const { data: studyMeta } = await admin
@@ -96,15 +101,25 @@ export async function recordStudyActivity(
       .maybeSingle();
     const goal = assignmentGoal(studyMeta?.flashcard_count);
 
-    const { data: assignments } = await admin
+    const assignmentIds = new Set<string>();
+    const { data: direct } = await admin
       .from("class_assignments")
       .select("id")
       .eq("study_id", delta.studyId);
-    for (const a of assignments ?? []) {
+    for (const a of direct ?? []) assignmentIds.add(a.id);
+
+    const { data: copies } = await admin
+      .from("assignment_copies")
+      .select("assignment_id")
+      .eq("study_id", delta.studyId)
+      .eq("user_id", userId);
+    for (const c of copies ?? []) assignmentIds.add(c.assignment_id);
+
+    for (const assignmentId of Array.from(assignmentIds)) {
       const { data: existingProg } = await admin
         .from("assignment_progress")
         .select("id, cards_reviewed, completed_at")
-        .eq("assignment_id", a.id)
+        .eq("assignment_id", assignmentId)
         .eq("user_id", userId)
         .maybeSingle();
       if (existingProg) {
@@ -123,7 +138,7 @@ export async function recordStudyActivity(
           .eq("id", existingProg.id);
       } else {
         await admin.from("assignment_progress").insert({
-          assignment_id: a.id,
+          assignment_id: assignmentId,
           user_id: userId,
           cards_reviewed: cards,
           last_reviewed_at: new Date().toISOString(),
