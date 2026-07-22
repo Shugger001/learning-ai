@@ -47,7 +47,7 @@ export default async function DashboardLayout({
           null
         }
       />
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-11">
+      <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-12">
         <PageReveal>{children}</PageReveal>
       </main>
     </div>

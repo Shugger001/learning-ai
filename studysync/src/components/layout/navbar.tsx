@@ -44,16 +44,15 @@ export function Navbar({ userEmail, userName }: NavbarProps) {
 
   return (
     <motion.header
-      className="sticky top-0 z-40 border-b border-border/80 bg-background/90 backdrop-blur-md"
+      className="sticky top-0 z-40 border-b border-border/50 bg-background/75 backdrop-blur-xl"
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: EASE }}
+      transition={{ duration: 0.45, ease: EASE }}
     >
-      <div className="h-0.5 w-full bg-signal" aria-hidden />
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
         <Link
           href="/dashboard"
-          className="flex items-center gap-2 font-display text-lg font-bold tracking-tight"
+          className="flex items-center gap-2.5 font-display text-[1.05rem] font-semibold tracking-tight"
           aria-label="StudySync home"
         >
           <span className="brand-mark" aria-hidden />
@@ -61,7 +60,7 @@ export function Navbar({ userEmail, userName }: NavbarProps) {
         </Link>
 
         <nav
-          className="hidden items-center gap-0.5 md:flex"
+          className="hidden items-center gap-1 rounded-full border border-border/60 bg-card/50 p-1 shadow-soft md:flex"
           aria-label="Primary"
         >
           {PRIMARY_LINKS.map((link) => {
@@ -72,9 +71,9 @@ export function Navbar({ userEmail, userName }: NavbarProps) {
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  "px-2.5 py-1.5 text-sm font-semibold tracking-tight transition-colors",
+                  "relative rounded-full px-3.5 py-1.5 text-[13px] font-medium tracking-tight transition-colors",
                   active
-                    ? "bg-foreground text-background"
+                    ? "bg-primary text-primary-foreground shadow-soft"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -86,7 +85,7 @@ export function Navbar({ userEmail, userName }: NavbarProps) {
 
         <div className="flex items-center gap-1.5 sm:gap-2">
           <GlobalSearch />
-          <Button asChild size="sm" className="shrink-0 bg-signal text-accent-foreground hover:bg-signal/90">
+          <Button asChild size="sm" variant="secondary" className="shrink-0">
             <Link href="/dashboard?new=1">
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">New</span>
@@ -99,7 +98,7 @@ export function Navbar({ userEmail, userName }: NavbarProps) {
                 {userName?.split(" ")[0] || userEmail?.split("@")[0] || "Account"}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-premium">
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
                   <p className="text-sm font-medium">{userName || "Student"}</p>

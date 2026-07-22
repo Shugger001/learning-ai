@@ -1,19 +1,19 @@
 import type { Metadata } from "next";
-import { Bricolage_Grotesque, Manrope } from "next/font/google";
+import { Bricolage_Grotesque, Source_Sans_3 } from "next/font/google";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { RegisterServiceWorker } from "@/components/pwa/register-sw";
 import "./globals.css";
 
-const manrope = Manrope({
+const body = Source_Sans_3({
   subsets: ["latin"],
-  variable: "--font-manrope",
+  variable: "--font-body",
   display: "swap",
 });
 
-const bricolage = Bricolage_Grotesque({
+const display = Bricolage_Grotesque({
   subsets: ["latin"],
-  variable: "--font-bricolage",
+  variable: "--font-display",
   display: "swap",
 });
 
@@ -24,8 +24,8 @@ export const metadata: Metadata = {
   applicationName: "StudySync",
   manifest: "/manifest.webmanifest",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#1a5c45" },
-    { media: "(prefers-color-scheme: dark)", color: "#0c1612" },
+    { media: "(prefers-color-scheme: light)", color: "#163d34" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b1412" },
   ],
   appleWebApp: {
     capable: true,
@@ -48,9 +48,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${manrope.variable} ${bricolage.variable} font-sans antialiased`}
-      >
+      <body className={`${body.variable} ${display.variable} font-sans antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <QueryProvider>
             {children}

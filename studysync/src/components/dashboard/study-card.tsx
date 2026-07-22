@@ -152,18 +152,18 @@ export function StudyCard({
       <Link href={`/study/${study.id}`} className="block h-full">
         <article
           className={cn(
-            "relative flex h-full min-h-[12.5rem] flex-col overflow-hidden border border-border/80 bg-card/60 p-5",
-            "shadow-[3px_3px_0_hsl(var(--foreground)/0.04)] transition-all duration-200",
-            "group-hover:border-primary/50 group-hover:bg-card group-hover:shadow-[4px_4px_0_hsl(var(--signal)/0.35)]"
+            "relative flex h-full min-h-[12.5rem] flex-col overflow-hidden rounded-xl border border-border/60 bg-card/70 p-5",
+            "shadow-soft transition-all duration-300",
+            "group-hover:border-primary/20 group-hover:bg-card group-hover:shadow-premium"
           )}
         >
           <div
-            className="absolute inset-y-0 left-0 w-[3px] bg-signal opacity-0 transition-opacity group-hover:opacity-100"
+            className="absolute inset-x-0 top-0 h-[2px] bg-signal/0 transition-colors group-hover:bg-signal/80"
             aria-hidden
           />
 
           <div className="mb-5 flex items-start justify-between gap-3">
-            <div className="flex h-9 w-9 items-center justify-center border border-border/60 bg-muted/40 text-muted-foreground">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-border/50 bg-muted/30 text-muted-foreground">
               <Icon className="h-4 w-4" aria-hidden />
             </div>
             <div className="flex items-center gap-2">

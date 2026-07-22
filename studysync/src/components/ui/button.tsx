@@ -4,25 +4,25 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils/cn";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-none text-sm font-semibold tracking-tight transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold tracking-tight transition-all duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 active:scale-[0.98]",
   {
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground hover:bg-primary/90",
+          "bg-primary text-primary-foreground shadow-soft hover:bg-primary/92 hover:shadow-premium",
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         outline:
-          "border border-foreground/25 bg-transparent hover:border-foreground/45 hover:bg-foreground/[0.03]",
+          "border border-border bg-card/40 shadow-soft hover:border-primary/25 hover:bg-card hover:shadow-premium",
         secondary:
-          "bg-signal text-accent-foreground hover:bg-signal/90",
-        ghost: "hover:bg-muted hover:text-foreground",
+          "bg-signal text-accent-foreground shadow-glow hover:bg-signal/90",
+        ghost: "hover:bg-muted/80 hover:text-foreground",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
         default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-none px-3",
-        lg: "h-12 rounded-none px-8 text-[15px]",
+        sm: "h-9 rounded-md px-3.5",
+        lg: "h-12 rounded-md px-8 text-[15px]",
         icon: "h-10 w-10",
       },
     },

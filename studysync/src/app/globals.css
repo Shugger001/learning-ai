@@ -4,61 +4,61 @@
 
 @layer base {
   :root {
-    /* Signal sharp — deep forest ink, hot amber signal, cool paper */
-    --background: 198 22% 95%;
-    --foreground: 165 35% 8%;
+    /* Quiet Atelier — deep forest, champagne signal, porcelain paper */
+    --background: 160 18% 97%;
+    --foreground: 168 32% 9%;
     --card: 0 0% 100%;
-    --card-foreground: 165 35% 8%;
+    --card-foreground: 168 32% 9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 165 35% 8%;
-    --primary: 162 55% 18%;
-    --primary-foreground: 42 100% 97%;
-    --secondary: 198 16% 90%;
-    --secondary-foreground: 165 30% 12%;
-    --muted: 198 14% 91%;
-    --muted-foreground: 198 12% 34%;
-    --accent: 40 96% 50%;
-    --accent-foreground: 165 45% 8%;
-    --destructive: 4 78% 46%;
+    --popover-foreground: 168 32% 9%;
+    --primary: 168 42% 16%;
+    --primary-foreground: 45 40% 98%;
+    --secondary: 160 12% 94%;
+    --secondary-foreground: 168 28% 14%;
+    --muted: 160 10% 94%;
+    --muted-foreground: 168 8% 40%;
+    --accent: 38 55% 52%;
+    --accent-foreground: 168 40% 10%;
+    --destructive: 4 68% 46%;
     --destructive-foreground: 0 0% 100%;
-    --border: 198 16% 80%;
-    --input: 198 16% 80%;
-    --ring: 40 96% 50%;
-    --radius: 0rem;
-    --success: 152 52% 30%;
+    --border: 160 12% 88%;
+    --input: 160 12% 88%;
+    --ring: 168 42% 16%;
+    --radius: 0.5rem;
+    --success: 152 42% 32%;
     --success-foreground: 0 0% 100%;
-    --ink: 165 35% 8%;
-    --mist: 198 24% 93%;
-    --signal: 40 96% 50%;
-    --forest: 162 55% 18%;
+    --ink: 168 32% 9%;
+    --mist: 160 14% 95%;
+    --signal: 38 55% 52%;
+    --forest: 168 42% 16%;
   }
 
   .dark {
-    --background: 165 28% 6%;
-    --foreground: 42 25% 96%;
-    --card: 165 24% 9%;
-    --card-foreground: 42 25% 96%;
-    --popover: 165 24% 9%;
-    --popover-foreground: 42 25% 96%;
-    --primary: 40 96% 52%;
-    --primary-foreground: 165 40% 8%;
-    --secondary: 165 16% 13%;
-    --secondary-foreground: 42 25% 96%;
-    --muted: 165 16% 13%;
-    --muted-foreground: 180 10% 60%;
-    --accent: 162 40% 16%;
-    --accent-foreground: 40 95% 72%;
-    --destructive: 4 65% 42%;
+    --background: 168 22% 6%;
+    --foreground: 45 20% 96%;
+    --card: 168 18% 9%;
+    --card-foreground: 45 20% 96%;
+    --popover: 168 18% 9%;
+    --popover-foreground: 45 20% 96%;
+    --primary: 38 55% 56%;
+    --primary-foreground: 168 40% 8%;
+    --secondary: 168 14% 12%;
+    --secondary-foreground: 45 20% 96%;
+    --muted: 168 14% 12%;
+    --muted-foreground: 170 8% 62%;
+    --accent: 168 28% 14%;
+    --accent-foreground: 38 50% 72%;
+    --destructive: 4 58% 42%;
     --destructive-foreground: 0 0% 100%;
-    --border: 165 14% 16%;
-    --input: 165 14% 16%;
-    --ring: 40 96% 52%;
-    --success: 152 48% 38%;
+    --border: 168 12% 15%;
+    --input: 168 12% 15%;
+    --ring: 38 55% 56%;
+    --success: 152 40% 38%;
     --success-foreground: 0 0% 100%;
-    --ink: 42 25% 96%;
-    --mist: 165 20% 10%;
-    --signal: 40 96% 52%;
-    --forest: 162 40% 26%;
+    --ink: 45 20% 96%;
+    --mist: 168 16% 9%;
+    --signal: 38 55% 56%;
+    --forest: 168 28% 24%;
   }
 
   * {
@@ -67,56 +67,58 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: var(--font-manrope), system-ui, sans-serif;
+    font-family: var(--font-body), system-ui, sans-serif;
+    font-feature-settings: "ss01" on, "kern" on;
+    letter-spacing: -0.011em;
+    line-height: 1.6;
     background-color: hsl(var(--background));
     background-image:
-      linear-gradient(
-        145deg,
-        hsl(198 28% 92% / 0.95) 0%,
-        hsl(var(--background)) 38%,
-        hsl(162 22% 93% / 0.7) 100%
+      radial-gradient(
+        ellipse 80% 55% at 50% -10%,
+        hsl(38 40% 70% / 0.09),
+        transparent 55%
       ),
       radial-gradient(
-        ellipse 55% 40% at 100% -5%,
-        hsl(40 96% 50% / 0.14),
-        transparent 58%
-      ),
-      radial-gradient(
-        ellipse 40% 35% at 0% 100%,
-        hsl(162 45% 30% / 0.06),
+        ellipse 50% 40% at 100% 100%,
+        hsl(168 30% 40% / 0.05),
         transparent 50%
       ),
-      url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.045'/%3E%3C/svg%3E");
+      linear-gradient(
+        180deg,
+        hsl(160 20% 98%) 0%,
+        hsl(var(--background)) 40%,
+        hsl(160 14% 96%) 100%
+      );
     min-height: 100vh;
   }
 
   .dark body {
     background-image:
-      linear-gradient(
-        165deg,
-        hsl(165 30% 8%) 0%,
-        hsl(var(--background)) 48%,
-        hsl(165 26% 5%) 100%
-      ),
       radial-gradient(
-        ellipse 50% 40% at 95% 0%,
-        hsl(40 96% 50% / 0.16),
-        transparent 52%
+        ellipse 70% 45% at 50% -5%,
+        hsl(38 50% 40% / 0.1),
+        transparent 50%
       ),
-      url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.07'/%3E%3C/svg%3E");
+      linear-gradient(
+        180deg,
+        hsl(168 24% 8%) 0%,
+        hsl(var(--background)) 50%,
+        hsl(168 22% 5%) 100%
+      );
   }
 
   h1,
   h2,
   h3,
   .font-display {
-    font-family: var(--font-bricolage), var(--font-manrope), system-ui, sans-serif;
-    letter-spacing: -0.045em;
-    font-weight: 700;
+    font-family: var(--font-display), var(--font-body), system-ui, sans-serif;
+    letter-spacing: -0.035em;
+    font-weight: 600;
+    line-height: 1.15;
   }
 
   ::selection {
-    background: hsl(var(--signal) / 0.35);
+    background: hsl(var(--signal) / 0.28);
     color: hsl(var(--ink));
   }
 }
@@ -127,27 +129,45 @@
   }
 
   .surface-elevated {
-    @apply border border-border bg-card/95 shadow-[4px_4px_0_hsl(var(--foreground)/0.06)];
+    @apply border border-border/70 bg-card/95 shadow-premium;
   }
 
   .shell-panel {
-    @apply border border-border/90 bg-card/70 backdrop-blur-[2px];
+    @apply rounded-[calc(var(--radius)+2px)] border border-border/60 bg-card/75 shadow-soft backdrop-blur-sm;
   }
 
   .signal-bar {
-    @apply h-1.5 w-14 bg-[hsl(var(--signal))];
+    @apply h-[3px] w-12 rounded-full bg-[hsl(var(--signal))];
   }
 
   .page-kicker {
-    @apply text-[11px] font-semibold uppercase tracking-[0.2em] text-primary;
+    @apply text-[11px] font-medium uppercase tracking-[0.22em] text-primary/80;
   }
 
   .brand-mark {
-    @apply inline-block h-2.5 w-2.5 shrink-0 bg-[hsl(var(--signal))];
+    @apply inline-block h-2 w-2 shrink-0 rounded-[2px] bg-[hsl(var(--signal))];
   }
 
   .ink-rule {
-    @apply border-t border-foreground/15;
+    @apply border-t border-border/80;
+  }
+
+  .shadow-soft {
+    box-shadow:
+      0 1px 2px hsl(168 30% 10% / 0.04),
+      0 8px 24px hsl(168 30% 10% / 0.05);
+  }
+
+  .shadow-premium {
+    box-shadow:
+      0 1px 1px hsl(168 30% 10% / 0.03),
+      0 12px 40px hsl(168 30% 10% / 0.07);
+  }
+
+  .shadow-glow {
+    box-shadow:
+      0 1px 2px hsl(168 30% 10% / 0.04),
+      0 16px 48px hsl(38 55% 40% / 0.12);
   }
 }
 

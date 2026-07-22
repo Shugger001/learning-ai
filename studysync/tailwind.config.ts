@@ -56,14 +56,20 @@ const config: Config = {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        sans: ["var(--font-manrope)", "system-ui", "sans-serif"],
+        sans: ["var(--font-body)", "system-ui", "sans-serif"],
         display: [
-          "var(--font-bricolage)",
-          "var(--font-manrope)",
+          "var(--font-display)",
+          "var(--font-body)",
           "system-ui",
           "sans-serif",
         ],
         mono: ["ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
+      },
+      boxShadow: {
+        soft: "0 1px 2px hsl(168 30% 10% / 0.04), 0 8px 24px hsl(168 30% 10% / 0.05)",
+        premium:
+          "0 1px 1px hsl(168 30% 10% / 0.03), 0 12px 40px hsl(168 30% 10% / 0.07)",
+        glow: "0 1px 2px hsl(168 30% 10% / 0.04), 0 16px 48px hsl(38 55% 40% / 0.12)",
       },
       keyframes: {
         "accordion-down": {

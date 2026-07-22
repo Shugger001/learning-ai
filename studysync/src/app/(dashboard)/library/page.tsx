@@ -16,7 +16,7 @@ export default async function LibraryPage() {
         <p className="page-kicker">
           Premade library
         </p>
-        <h1 className="font-display text-3xl font-bold tracking-tight">
+        <h1 className="font-display text-3xl font-semibold tracking-tight">
           Browse study packs
         </h1>
         <p className="max-w-xl text-[15px] text-muted-foreground">

@@ -54,7 +54,7 @@ export function PricingClient({ plan, usage }: PricingClientProps) {
         <p className="page-kicker">
           Pricing
         </p>
-        <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
+        <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
           Study without limits
         </h1>
         <p className="text-[15px] text-muted-foreground">
@@ -105,7 +105,7 @@ export function PricingClient({ plan, usage }: PricingClientProps) {
           transition={{ type: "spring", stiffness: 400, damping: 28 }}
           className="border border-border/80 bg-card/50 p-6 shadow-[4px_4px_0_hsl(var(--foreground)/0.05)]"
         >
-          <h2 className="font-display text-xl font-bold">Free</h2>
+          <h2 className="font-display text-xl font-semibold">Free</h2>
           <p className="mt-1 text-sm text-muted-foreground">For trying StudySync</p>
           <ul className="mt-6 space-y-2 text-sm">
             <li className="flex gap-2">
@@ -143,7 +143,7 @@ export function PricingClient({ plan, usage }: PricingClientProps) {
             >
               <Sparkles className="h-4 w-4 text-primary" />
             </motion.span>
-            <h2 className="font-display text-xl font-bold">Pro</h2>
+            <h2 className="font-display text-xl font-semibold">Pro</h2>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">Unlimited learning loop</p>
           <ul className="mt-6 space-y-2 text-sm">

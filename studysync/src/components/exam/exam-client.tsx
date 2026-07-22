@@ -95,7 +95,7 @@ export function ExamClient() {
         <p className="page-kicker">
           Countdown
         </p>
-        <h1 className="font-display text-3xl font-bold tracking-tight">
+        <h1 className="font-display text-3xl font-semibold tracking-tight">
           Exam campaigns
         </h1>
         <p className="max-w-xl text-sm text-muted-foreground">
@@ -154,7 +154,7 @@ export function ExamClient() {
       </div>
 
       <section className="space-y-3">
-        <h2 className="font-display text-xl font-bold tracking-tight">
+        <h2 className="font-display text-xl font-semibold tracking-tight">
           Active
         </h2>
         {upcoming.length === 0 ? (

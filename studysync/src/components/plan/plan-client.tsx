@@ -90,7 +90,7 @@ export function PlanClient() {
         <p className="page-kicker">
           Spaced plan
         </p>
-        <h1 className="font-display text-3xl font-bold tracking-tight">
+        <h1 className="font-display text-3xl font-semibold tracking-tight">
           Week plan
         </h1>
         <p className="max-w-xl text-sm text-muted-foreground">
