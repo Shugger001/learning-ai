@@ -162,9 +162,14 @@ export function WeekCalendar({
         })}
       </div>
 
-      <Button asChild>
-        <Link href="/review">Review today</Link>
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button asChild>
+          <Link href="/review">Review today</Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link href="/plan">Generate week plan</Link>
+        </Button>
+      </div>
     </motion.div>
   );
 }

@@ -51,12 +51,22 @@ export interface ProgressPayload {
 export function ProgressClient({ data }: { data: ProgressPayload }) {
   const [weeklyRecap, setWeeklyRecap] = useState(false);
   const [prefMessage, setPrefMessage] = useState<string | null>(null);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [shareMessage, setShareMessage] = useState<string | null>(null);
 
   useEffect(() => {
     void fetch("/api/settings/email-preferences")
       .then((r) => r.json())
       .then((json: ApiResponse<EmailPreferences>) => {
         if (json.success) setWeeklyRecap(Boolean(json.data.weekly_recap));
+      })
+      .catch(() => undefined);
+    void fetch("/api/progress/share")
+      .then((r) => r.json())
+      .then((json: ApiResponse<{ token: string | null; url: string | null }>) => {
+        if (json.success && json.data.url) {
+          setShareUrl(`${window.location.origin}${json.data.url}`);
+        }
       })
       .catch(() => undefined);
   }, []);
@@ -76,6 +86,29 @@ export function ProgressClient({ data }: { data: ProgressPayload }) {
       return;
     }
     setPrefMessage(next ? "Weekly recap enabled" : "Weekly recap disabled");
+  }
+
+  async function enableShare() {
+    setShareMessage(null);
+    const res = await fetch("/api/progress/share", { method: "POST" });
+    const json = (await res.json()) as ApiResponse<{
+      token: string;
+      url: string;
+    }>;
+    if (!json.success) {
+      setShareMessage(json.error);
+      return;
+    }
+    const url = `${window.location.origin}${json.data.url}`;
+    setShareUrl(url);
+    await navigator.clipboard.writeText(url);
+    setShareMessage("Snapshot link copied");
+  }
+
+  async function disableShare() {
+    await fetch("/api/progress/share", { method: "DELETE" });
+    setShareUrl(null);
+    setShareMessage("Snapshot link disabled");
   }
 
   const cardsThisWeek = data.activity
@@ -154,12 +187,41 @@ export function ProgressClient({ data }: { data: ProgressPayload }) {
           <Link href="/review">Review today</Link>
         </Button>
         <Button asChild variant="outline">
+          <Link href="/plan">Week plan</Link>
+        </Button>
+        <Button asChild variant="outline">
           <Link href="/library">Browse library</Link>
         </Button>
         <Button asChild variant="outline">
           <Link href="/classes">Classes</Link>
         </Button>
+        {shareUrl ? (
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                void navigator.clipboard.writeText(shareUrl);
+                setShareMessage("Snapshot link copied");
+              }}
+            >
+              Copy snapshot
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => void disableShare()}>
+              Disable snapshot
+            </Button>
+          </>
+        ) : (
+          <Button type="button" variant="outline" onClick={() => void enableShare()}>
+            Share snapshot
+          </Button>
+        )}
       </div>
+      {shareMessage ? (
+        <p className="text-xs text-muted-foreground" role="status">
+          {shareMessage}
+        </p>
+      ) : null}
 
       <div className="flex flex-wrap items-center justify-between gap-3 border border-border/70 bg-card/40 px-4 py-3">
         <div>

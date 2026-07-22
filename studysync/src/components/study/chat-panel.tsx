@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { motion } from "framer-motion";
-import { Loader2, Send } from "lucide-react";
+import { Loader2, Mic, MicOff, Send, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils/cn";
@@ -30,7 +30,13 @@ export function ChatPanel({ studyId }: { studyId: string }) {
   const [streamingId, setStreamingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"chat" | "tutor">("chat");
+  const [voiceOut, setVoiceOut] = useState(true);
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     void fetch(`/api/chat?study_id=${studyId}`)
@@ -43,6 +49,29 @@ export function ChatPanel({ studyId }: { studyId: string }) {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streamingId]);
+
+  async function speak(text: string) {
+    if (!voiceOut || !text.trim()) return;
+    try {
+      const res = await fetch("/api/chat/speak", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        URL.revokeObjectURL(audioRef.current.src);
+      }
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      await audio.play();
+    } catch {
+      // ignore TTS failures
+    }
+  }
 
   async function send(questionOverride?: string) {
     const question = (questionOverride ?? input).trim();
@@ -72,6 +101,8 @@ export function ChatPanel({ studyId }: { studyId: string }) {
         created_at: new Date().toISOString(),
       },
     ]);
+
+    let finalAssistantText = "";
 
     try {
       const res = await fetch("/api/chat?stream=1", {
@@ -126,6 +157,7 @@ export function ChatPanel({ studyId }: { studyId: string }) {
           }
 
           if (payload.token) {
+            finalAssistantText += payload.token;
             setMessages((prev) =>
               prev.map((m) =>
                 m.id === tempAssistantId
@@ -136,6 +168,7 @@ export function ChatPanel({ studyId }: { studyId: string }) {
           }
 
           if (payload.done && payload.message) {
+            finalAssistantText = payload.message.content;
             setMessages((prev) =>
               prev.map((m) =>
                 m.id === tempAssistantId ? payload.message! : m
@@ -151,6 +184,61 @@ export function ChatPanel({ studyId }: { studyId: string }) {
 
     setLoading(false);
     setStreamingId(null);
+    if (mode === "tutor" && finalAssistantText) {
+      void speak(finalAssistantText);
+    }
+  }
+
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      chunksRef.current = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size) chunksRef.current.push(e.data);
+      };
+      recorder.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        void finishRecording();
+      };
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setRecording(true);
+      setError(null);
+    } catch {
+      setError("Microphone permission is required for voice answers.");
+    }
+  }
+
+  async function finishRecording() {
+    setRecording(false);
+    const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+    if (!blob.size) return;
+    setTranscribing(true);
+    try {
+      const form = new FormData();
+      form.append("audio", blob, `answer-${Date.now()}.webm`);
+      const res = await fetch("/api/chat/transcribe", {
+        method: "POST",
+        body: form,
+      });
+      const json = (await res.json()) as ApiResponse<{ text: string }>;
+      if (!json.success) {
+        setError(json.error);
+        return;
+      }
+      const text = json.data.text.trim();
+      if (text) await send(text);
+      else setError("Couldn’t hear that — try again.");
+    } catch {
+      setError("Transcription failed");
+    } finally {
+      setTranscribing(false);
+    }
+  }
+
+  function stopRecording() {
+    mediaRecorderRef.current?.stop();
   }
 
   const suggestions = mode === "tutor" ? TUTOR_SUGGESTIONS : CHAT_SUGGESTIONS;
@@ -176,18 +264,33 @@ export function ChatPanel({ studyId }: { studyId: string }) {
             AI tutor
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground">
-          {mode === "tutor"
-            ? "Socratic mode · uses your weak cards"
-            : "Answers from this study’s materials"}
-        </p>
+        <div className="flex items-center gap-1">
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={() => setVoiceOut((v) => !v)}
+            aria-label={voiceOut ? "Mute tutor voice" : "Enable tutor voice"}
+          >
+            {voiceOut ? (
+              <Volume2 className="h-4 w-4" />
+            ) : (
+              <VolumeX className="h-4 w-4" />
+            )}
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            {mode === "tutor"
+              ? "Socratic · voice ready"
+              : "Answers from this study"}
+          </p>
+        </div>
       </div>
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
         {messages.length === 0 ? (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
               {mode === "tutor"
-                ? "I’ll quiz you on weak spots and guide with questions—try a prompt below."
+                ? "Speak or type answers. I’ll quiz weak spots and talk back when voice is on."
                 : "Ask anything about this study — concepts, definitions, or practice explanations."}
             </p>
             <div className="flex flex-wrap gap-2">
@@ -257,12 +360,30 @@ export function ChatPanel({ studyId }: { studyId: string }) {
         </p>
       ) : null}
       <div className="flex gap-2 border-t border-border/60 p-3">
+        <Button
+          type="button"
+          variant={recording ? "destructive" : "outline"}
+          size="icon"
+          disabled={loading || transcribing}
+          onClick={() =>
+            recording ? stopRecording() : void startRecording()
+          }
+          aria-label={recording ? "Stop recording" : "Speak answer"}
+        >
+          {transcribing ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : recording ? (
+            <MicOff className="h-4 w-4" />
+          ) : (
+            <Mic className="h-4 w-4" />
+          )}
+        </Button>
         <Textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder={
             mode === "tutor"
-              ? "Answer the tutor or ask for a hint…"
+              ? "Answer the tutor or hold the mic…"
               : "Ask about this lecture…"
           }
           className={cn("min-h-[44px] resize-none")}

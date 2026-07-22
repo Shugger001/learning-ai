@@ -11,6 +11,7 @@ const protectedPrefixes = [
   "/calendar",
   "/classes",
   "/rooms",
+  "/plan",
 ];
 const authRoutes = ["/login", "/signup"];
 

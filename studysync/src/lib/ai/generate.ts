@@ -399,6 +399,26 @@ export async function synthesizePodcastAudio(script: string): Promise<Buffer> {
   return Buffer.concat(parts);
 }
 
+/** Short TTS clip for tutor replies (MP3). */
+export async function synthesizeSpeech(
+  text: string,
+  voice: "alloy" | "onyx" = "alloy"
+): Promise<Buffer> {
+  const openai = getOpenAI();
+  const cleaned = text
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/[#>*_`]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 900);
+  const response = await openai.audio.speech.create({
+    model: "tts-1",
+    voice,
+    input: cleaned || "Let's keep going.",
+  });
+  return Buffer.from(await response.arrayBuffer());
+}
+
 function parsePodcastSegments(
   script: string
 ): { host: "A" | "B"; text: string }[] {
