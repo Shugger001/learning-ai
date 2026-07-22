@@ -8,6 +8,7 @@ const protectedPrefixes = [
   "/pricing",
   "/progress",
   "/review",
+  "/calendar",
 ];
 const authRoutes = ["/login", "/signup"];
 

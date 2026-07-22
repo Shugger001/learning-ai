@@ -37,20 +37,29 @@ import { MarkdownMath } from "@/components/ui/markdown-math";
 import { cn } from "@/lib/utils/cn";
 import { fadeUp } from "@/lib/motion";
 import { exportNotesMarkdown, exportNotesPdf } from "@/lib/export/pack";
+import { useNotesPresence } from "@/hooks/use-notes-presence";
+import { createClient } from "@/lib/supabase/client";
 import type { ApiResponse } from "@/types/api";
 import type { Note } from "@/types/database";
 
 interface NotesPanelProps {
   note: Note | null;
+  studyId?: string;
 }
 
-export function NotesPanel({ note }: NotesPanelProps) {
+export function NotesPanel({ note, studyId }: NotesPanelProps) {
   const [content, setContent] = useState(note?.content ?? "");
   const [summary, setSummary] = useState(note?.summary ?? "");
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const { peers, selfId } = useNotesPresence({
+    studyId,
+    enabled: Boolean(studyId),
+    editing,
+  });
+  const others = peers.filter((p) => p.id !== selfId);
 
   const saveNote = useCallback(
     async (nextContent: string, nextSummary: string, silent = false) => {
@@ -102,6 +111,41 @@ export function NotesPanel({ note }: NotesPanelProps) {
     return () => clearTimeout(timer);
   }, [content, summary, editing, note, saveNote]);
 
+  // Live sync from collaborators (last-write-wins)
+  useEffect(() => {
+    if (!note?.id || !studyId) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`notes-row:${note.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "notes",
+          filter: `id=eq.${note.id}`,
+        },
+        (payload) => {
+          setEditing((isEditing) => {
+            if (isEditing) return isEditing;
+            const next = payload.new as Note;
+            setContent(next.content ?? "");
+            setSummary(next.summary ?? "");
+            return isEditing;
+          });
+        }
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [note?.id, studyId]);
+
+  useEffect(() => {
+    if (editing || !editor) return;
+    editor.commands.setContent(markdownToHtml(content));
+  }, [content, editing, editor]);
+
   if (!note) {
     return (
       <motion.p className="text-sm text-muted-foreground" {...fadeUp}>
@@ -130,6 +174,26 @@ export function NotesPanel({ note }: NotesPanelProps) {
 
   return (
     <motion.div className="space-y-6" {...fadeUp}>
+      {others.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground">Live</span>
+          {others.map((p) => (
+            <span
+              key={p.id}
+              className="inline-flex items-center gap-1.5 border border-border/70 px-2 py-0.5 text-xs"
+              title={p.editing ? "Editing" : "Viewing"}
+            >
+              <span
+                className="h-2 w-2 rounded-full"
+                style={{ background: p.color }}
+                aria-hidden
+              />
+              {p.name}
+              {p.editing ? " · editing" : ""}
+            </span>
+          ))}
+        </div>
+      ) : null}
       <div className="flex flex-wrap gap-2">
         <Button
           type="button"

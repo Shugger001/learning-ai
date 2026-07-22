@@ -9,7 +9,7 @@ import type { ApiResponse } from "@/types/api";
 interface InviteRow {
   id: string;
   email: string;
-  role: "viewer" | "commenter";
+  role: "viewer" | "commenter" | "editor";
   token: string;
   accepted_at: string | null;
   created_at: string;
@@ -25,7 +25,9 @@ export function ShareInvitePanel({
   onShareEnabled?: (shareUrl: string) => void;
 }) {
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"viewer" | "commenter">("commenter");
+  const [role, setRole] = useState<"viewer" | "commenter" | "editor">(
+    "commenter"
+  );
   const [invites, setInvites] = useState<InviteRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -98,10 +100,13 @@ export function ShareInvitePanel({
         <select
           className="h-10 border border-input bg-background px-2 text-sm"
           value={role}
-          onChange={(e) => setRole(e.target.value as "viewer" | "commenter")}
+          onChange={(e) =>
+            setRole(e.target.value as "viewer" | "commenter" | "editor")
+          }
           aria-label="Invite role"
         >
           <option value="commenter">Can comment</option>
+          <option value="editor">Can edit notes</option>
           <option value="viewer">View only</option>
         </select>
         <Button

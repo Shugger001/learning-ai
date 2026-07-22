@@ -9,7 +9,7 @@ interface RouteParams {
 
 const inviteSchema = z.object({
   email: z.string().email(),
-  role: z.enum(["viewer", "commenter"]).default("commenter"),
+  role: z.enum(["viewer", "commenter", "editor"]).default("commenter"),
 });
 
 async function assertOwner(studyId: string, userId: string) {

@@ -18,6 +18,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { NewStudyModal } from "@/components/upload/new-study-modal";
 import { StudyCard } from "@/components/dashboard/study-card";
 import { FolderBar } from "@/components/dashboard/folder-bar";
+import { FirstRunTour } from "@/components/onboarding/first-run-tour";
 import { Button } from "@/components/ui/button";
 import { ProcessingBar } from "@/components/ui/processing-bar";
 import { AnimatedNumber } from "@/components/ui/animated-number";
@@ -47,6 +48,7 @@ interface DashboardClientProps {
   plan: PlanType;
   usage: UsageRemaining | null;
   userName?: string | null;
+  onboardingCompleted?: boolean;
 }
 
 const PRIMARY_START: {
@@ -111,6 +113,7 @@ export function DashboardClient({
   plan,
   usage,
   userName,
+  onboardingCompleted = true,
 }: DashboardClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -124,6 +127,7 @@ export function DashboardClient({
   const [showMoreFormats, setShowMoreFormats] = useState(false);
   const [dueCount, setDueCount] = useState(dueToday);
   const [tipIndex, setTipIndex] = useState(0);
+  const [tourOpen, setTourOpen] = useState(!onboardingCompleted);
 
   const firstName = userName?.trim().split(/\s+/)[0] || null;
 
@@ -288,6 +292,20 @@ export function DashboardClient({
                 ? `${dueToday} flashcard${dueToday === 1 ? "" : "s"} due - start with spaced recall.`
                 : "Upload, record, or paste a YouTube link to build your next study pack."}
             </p>
+            {!onboardingCompleted || studies.length === 0 ? (
+              <ul className="space-y-1.5 text-sm text-muted-foreground">
+                <li>
+                  {studies.length === 0 ? "○" : "●"} Add a lecture or sample pack
+                </li>
+                <li>
+                  {dueCount > 0 || studies.some((s) => s.status === "complete")
+                    ? "●"
+                    : "○"}{" "}
+                  Review due cards
+                </li>
+                <li>○ Check calendar for the week ahead</li>
+              </ul>
+            ) : null}
             <div className="flex flex-wrap gap-2 pt-1">
               {dueCount > 0 ? (
                 <Button asChild size="lg">
@@ -496,6 +514,9 @@ export function DashboardClient({
             <Button onClick={() => openNew()}>
               <Plus className="h-4 w-4" />
               Upload lecture
+            </Button>
+            <Button type="button" variant="outline" onClick={() => setTourOpen(true)}>
+              Take the tour
             </Button>
             <Button asChild variant="outline">
               <Link href="/library">
@@ -739,6 +760,14 @@ export function DashboardClient({
         open={open}
         onOpenChange={handleOpenChange}
         initialContentType={initialType}
+      />
+      <FirstRunTour
+        open={tourOpen}
+        studyCount={studies.length}
+        onClose={() => setTourOpen(false)}
+        onSampleStarted={(study) =>
+          setStudies((prev) => [study, ...prev.filter((s) => s.id !== study.id)])
+        }
       />
     </>
   );

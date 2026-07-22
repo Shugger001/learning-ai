@@ -368,7 +368,7 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
             transition={{ duration: 0.28, ease: EASE }}
           >
             {activeTab === "notes" ? (
-              <NotesPanel note={study.notes} />
+              <NotesPanel note={study.notes} studyId={study.id} />
             ) : null}
             {activeTab === "flashcards" ? (
               <FlashcardsPanel flashcards={study.flashcards} />

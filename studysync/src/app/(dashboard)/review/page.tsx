@@ -2,12 +2,29 @@ import { createClient } from "@/lib/supabase/server";
 import { DailyReviewClient } from "@/components/review/daily-review-client";
 import type { ReviewTodayPayload } from "@/types/review";
 
-export default async function ReviewPage() {
+function dayBounds(date: string) {
+  const start = `${date}T00:00:00.000Z`;
+  const endDate = new Date(start);
+  endDate.setUTCDate(endDate.getUTCDate() + 1);
+  return { start, end: endDate.toISOString() };
+}
+
+export default async function ReviewPage({
+  searchParams,
+}: {
+  searchParams?: { date?: string };
+}) {
   const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const today = new Date().toISOString().slice(0, 10);
+  const dateParam = searchParams?.date;
+  const focusDate =
+    dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : today;
+  const isFuture = focusDate > today;
+  const { start, end } = dayBounds(focusDate);
   const nowIso = new Date().toISOString();
 
   const { data: studies } = await supabase
@@ -27,14 +44,23 @@ export default async function ReviewPage() {
   };
 
   if (studyIds.length > 0) {
-    const { data: dueCards } = await supabase
+    let cardsQuery = supabase
       .from("flashcards")
       .select("*")
       .in("study_id", studyIds)
-      .lte("due_at", nowIso)
       .order("due_at", { ascending: true })
       .limit(40);
 
+    if (isFuture) {
+      cardsQuery = cardsQuery.gte("due_at", start).lt("due_at", end);
+    } else if (focusDate === today) {
+      cardsQuery = cardsQuery.lte("due_at", nowIso);
+    } else {
+      // Past day: cards that were due that day (preview)
+      cardsQuery = cardsQuery.gte("due_at", start).lt("due_at", end);
+    }
+
+    const { data: dueCards } = await cardsQuery;
     const cards = dueCards ?? [];
     const quizStudyIds = Array.from(
       new Set(cards.map((c) => c.study_id).filter(Boolean))
@@ -59,5 +85,11 @@ export default async function ReviewPage() {
     };
   }
 
-  return <DailyReviewClient initial={initial} />;
+  return (
+    <DailyReviewClient
+      initial={initial}
+      focusDate={focusDate !== today ? focusDate : undefined}
+      studyAhead={isFuture}
+    />
+  );
 }

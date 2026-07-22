@@ -20,6 +20,7 @@ export interface Profile {
   current_streak: number;
   longest_streak: number;
   last_study_date: string | null;
+  onboarding_completed: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -140,7 +141,7 @@ export interface ShareInvite {
   study_id: string;
   inviter_id: string;
   email: string;
-  role: "viewer" | "commenter";
+  role: "viewer" | "commenter" | "editor";
   token: string;
   accepted_at: string | null;
   created_at: string;

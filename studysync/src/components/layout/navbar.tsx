@@ -63,6 +63,14 @@ export function Navbar({ userEmail, userName }: NavbarProps) {
             size="sm"
             className="hidden sm:inline-flex"
           >
+            <Link href="/calendar">Calendar</Link>
+          </Button>
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            className="hidden sm:inline-flex"
+          >
             <Link href="/review">Review</Link>
           </Button>
           <Button
@@ -108,6 +116,9 @@ export function Navbar({ userEmail, userName }: NavbarProps) {
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild className="cursor-pointer sm:hidden">
                 <Link href="/dashboard?new=1">New study</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild className="cursor-pointer">
+                <Link href="/calendar">Calendar</Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild className="cursor-pointer">
                 <Link href="/review">Review today</Link>

@@ -24,8 +24,12 @@ const NOTIFIED_KEY = "studysync_due_notified_date";
 
 export function DailyReviewClient({
   initial,
+  focusDate,
+  studyAhead = false,
 }: {
   initial: ReviewTodayPayload;
+  focusDate?: string;
+  studyAhead?: boolean;
 }) {
   const [phase, setPhase] = useState<Phase>(
     initial.dueCards.length > 0 ? "cards" : initial.quizzes.length > 0 ? "quiz" : "done"
@@ -121,10 +125,12 @@ export function DailyReviewClient({
           Daily loop
         </p>
         <h1 className="font-display text-3xl font-semibold tracking-tight">
-          Review today
+          {focusDate ? `Review · ${focusDate}` : "Review today"}
         </h1>
         <p className="max-w-xl text-[15px] text-muted-foreground">
-          Spaced cards first, then a short quiz from the same studies.
+          {studyAhead
+            ? "Study ahead — these cards are scheduled for this day."
+            : "Spaced cards first, then a short quiz from the same studies."}
         </p>
       </div>
 

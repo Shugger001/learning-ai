@@ -22,7 +22,7 @@ export default async function DashboardPage() {
     supabase
       .from("profiles")
       .select(
-        "full_name, plan, uploads_used, chat_used, podcasts_used, usage_reset_at"
+        "full_name, plan, uploads_used, chat_used, podcasts_used, usage_reset_at, onboarding_completed"
       )
       .eq("user_id", user!.id)
       .single(),
@@ -41,8 +41,12 @@ export default async function DashboardPage() {
     chat_used: number | null;
     podcasts_used: number | null;
     usage_reset_at?: string | null;
+    onboarding_completed?: boolean | null;
   } | null;
-  if (profileRes.error?.message?.includes("usage_reset_at")) {
+  if (
+    profileRes.error?.message?.includes("usage_reset_at") ||
+    profileRes.error?.message?.includes("onboarding_completed")
+  ) {
     const fallback = await supabase
       .from("profiles")
       .select("full_name, plan, uploads_used, chat_used, podcasts_used")
@@ -83,6 +87,11 @@ export default async function DashboardPage() {
 
   const usage = remainingUsage(profile);
 
+  const onboardingCompleted =
+    profileRes.error?.message?.includes("onboarding_completed")
+      ? studyRows.length > 0
+      : Boolean(profile?.onboarding_completed);
+
   return (
     <Suspense fallback={<div className="text-sm text-muted-foreground">Loading…</div>}>
       <DashboardClient
@@ -93,6 +102,7 @@ export default async function DashboardPage() {
         plan={(profile?.plan as PlanType) ?? "free"}
         usage={usage}
         userName={userName}
+        onboardingCompleted={onboardingCompleted}
       />
     </Suspense>
   );
