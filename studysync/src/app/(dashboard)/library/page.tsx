@@ -21,7 +21,8 @@ export default async function LibraryPage() {
         </h1>
         <p className="max-w-xl text-[15px] text-muted-foreground">
           Clone a ready-made guide into your library and generate notes,
-          flashcards, and quizzes automatically.
+          flashcards, and quizzes automatically. Filter by subject to find AP
+          and STEM packs fast.
         </p>
       </div>
       <LibraryClient

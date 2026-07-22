@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { BookOpen, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { fadeUp, staggerContainer, staggerItem } from "@/lib/motion";
+import { cn } from "@/lib/utils/cn";
 import type { ApiResponse } from "@/types/api";
 import type { LibraryItem, Study } from "@/types/database";
 
@@ -18,6 +19,18 @@ export function LibraryClient({ items }: { items: LibraryListItem[] }) {
   const router = useRouter();
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [subject, setSubject] = useState<string>("all");
+
+  const subjects = useMemo(() => {
+    const set = new Set(items.map((i) => i.subject).filter(Boolean));
+    return ["all", ...Array.from(set).sort((a, b) => a.localeCompare(b))];
+  }, [items]);
+
+  const filtered = useMemo(
+    () =>
+      subject === "all" ? items : items.filter((i) => i.subject === subject),
+    [items, subject]
+  );
 
   async function addToLibrary(itemId: string) {
     setLoadingId(itemId);
@@ -40,7 +53,8 @@ export function LibraryClient({ items }: { items: LibraryListItem[] }) {
   if (!items.length) {
     return (
       <motion.p className="text-sm text-muted-foreground" {...fadeUp}>
-        No premade packs yet. Run the Turbo parity migration to seed the library.
+        No premade packs yet. Run the library/share/progress migration to seed
+        packs.
       </motion.p>
     );
   }
@@ -52,13 +66,37 @@ export function LibraryClient({ items }: { items: LibraryListItem[] }) {
           {error}
         </p>
       ) : null}
+
+      <div className="flex flex-wrap gap-2">
+        {subjects.map((s) => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => setSubject(s)}
+            className={cn(
+              "border px-3 py-1.5 text-xs font-medium capitalize transition-colors",
+              subject === s
+                ? "border-foreground bg-accent"
+                : "border-border/70 text-muted-foreground hover:bg-muted/40"
+            )}
+          >
+            {s === "all" ? "All subjects" : s}
+          </button>
+        ))}
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        Showing {filtered.length} of {items.length} packs
+      </p>
+
       <motion.ul
         className="grid gap-4 sm:grid-cols-2"
         variants={staggerContainer}
         initial="hidden"
         animate="show"
+        key={subject}
       >
-        {items.map((item) => (
+        {filtered.map((item) => (
           <motion.li
             key={item.id}
             variants={staggerItem}

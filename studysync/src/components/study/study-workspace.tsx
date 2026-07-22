@@ -7,6 +7,7 @@ import {
   Link2,
   Link2Off,
   Loader2,
+  Mail,
   MessageCircle,
   Layers,
   ListChecks,
@@ -23,6 +24,7 @@ import { MindMapPanel } from "@/components/study/mindmap-panel";
 import { ChatPanel } from "@/components/study/chat-panel";
 import { PodcastPanel } from "@/components/study/podcast-panel";
 import { ProcessingView } from "@/components/study/processing-view";
+import { ShareInvitePanel } from "@/components/share/share-invite-panel";
 import { useStudySessionStore } from "@/stores/study-session";
 import { resolveStudyFilePaths } from "@/lib/studies/files";
 import type { ApiResponse } from "@/types/api";
@@ -54,6 +56,7 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
   const activeTab = useStudySessionStore((s) => s.activeTab);
   const setActiveTab = useStudySessionStore((s) => s.setActiveTab);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [showInvites, setShowInvites] = useState(false);
   const [lifecycleBusy, setLifecycleBusy] = useState<"retry" | "delete" | null>(
     null
   );
@@ -198,6 +201,16 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
                   variant="ghost"
                   size="sm"
                   className="text-muted-foreground"
+                  onClick={() => setShowInvites((v) => !v)}
+                >
+                  <Mail className="h-4 w-4" />
+                  Invite
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground"
                   onClick={() => void disableShare()}
                 >
                   <Link2Off className="h-4 w-4" />
@@ -205,19 +218,40 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
                 </Button>
               </>
             ) : (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="text-muted-foreground"
-                onClick={() => void enableShare()}
-              >
-                <Link2 className="h-4 w-4" />
-                Share
-              </Button>
+              <>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground"
+                  onClick={() => void enableShare()}
+                >
+                  <Link2 className="h-4 w-4" />
+                  Share
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground"
+                  onClick={() => setShowInvites(true)}
+                >
+                  <Mail className="h-4 w-4" />
+                  Invite
+                </Button>
+              </>
             )}
           </div>
         </div>
+        {showInvites ? (
+          <ShareInvitePanel
+            studyId={study.id}
+            onShareEnabled={(url) => {
+              setShareUrl(url);
+              setShowInvites(true);
+            }}
+          />
+        ) : null}
         <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
           {study.title}
         </h1>

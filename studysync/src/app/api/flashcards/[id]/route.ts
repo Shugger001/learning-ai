@@ -63,5 +63,10 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     return apiError(error.message, 500);
   }
 
+  if (parsed.data.srs_rating) {
+    const { recordStudyActivity } = await import("@/lib/progress/activity");
+    await recordStudyActivity(user.id, { cardsReviewed: 1 });
+  }
+
   return apiSuccess(data);
 }

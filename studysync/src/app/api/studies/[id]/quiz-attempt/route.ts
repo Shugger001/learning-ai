@@ -101,5 +101,9 @@ export async function POST(request: Request, { params }: RouteParams) {
     }
     return apiError(error.message, 500);
   }
+
+  const { recordStudyActivity } = await import("@/lib/progress/activity");
+  await recordStudyActivity(user.id, { quizzesTaken: 1 });
+
   return apiSuccess(data, 201);
 }

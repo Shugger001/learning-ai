@@ -17,6 +17,9 @@ export interface Profile {
   chat_used: number;
   podcasts_used: number;
   usage_reset_at: string;
+  current_streak: number;
+  longest_streak: number;
+  last_study_date: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -128,6 +131,36 @@ export interface LibraryItem {
   subject: string;
   description: string | null;
   content: string;
+  created_at: string;
+}
+
+export interface ShareInvite {
+  id: string;
+  study_id: string;
+  inviter_id: string;
+  email: string;
+  role: "viewer" | "commenter";
+  token: string;
+  accepted_at: string | null;
+  created_at: string;
+}
+
+export interface ShareComment {
+  id: string;
+  study_id: string;
+  user_id: string | null;
+  invite_id: string | null;
+  author_name: string;
+  body: string;
+  created_at: string;
+}
+
+export interface StudyActivity {
+  id: string;
+  user_id: string;
+  activity_date: string;
+  cards_reviewed: number;
+  quizzes_taken: number;
   created_at: string;
 }
 

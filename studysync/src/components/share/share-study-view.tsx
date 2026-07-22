@@ -8,9 +8,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { QuizPanel } from "@/components/study/quiz-panel";
 import { MarkdownMath } from "@/components/ui/markdown-math";
+import { ShareComments } from "@/components/share/share-comments";
 import { cn } from "@/lib/utils/cn";
 import { EASE, fadeUp } from "@/lib/motion";
 import type { Flashcard, Note, Quiz, Study } from "@/types/database";
+import { Suspense } from "react";
 
 export interface ShareStudyPayload {
   study: Pick<Study, "id" | "title" | "content_type" | "status" | "share_token">;
@@ -147,6 +149,10 @@ export function ShareStudyView({ data }: { data: ShareStudyPayload }) {
           />
         </TabsContent>
       </Tabs>
+
+      <Suspense fallback={null}>
+        <ShareComments shareToken={data.study.share_token!} />
+      </Suspense>
 
       <p className="mt-12 text-sm text-muted-foreground">
         Want your own pack?{" "}
