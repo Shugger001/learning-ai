@@ -91,10 +91,10 @@ export function ClassesClient() {
     <motion.div className="space-y-8" {...fadeUp}>
       <div className="space-y-2">
         <div className="signal-bar" aria-hidden />
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+        <p className="page-kicker">
           Teaching
         </p>
-        <h1 className="font-display text-3xl font-semibold tracking-tight">
+        <h1 className="font-display text-3xl font-bold tracking-tight">
           Classes
         </h1>
         <p className="max-w-xl text-[15px] text-muted-foreground">
@@ -151,7 +151,7 @@ export function ClassesClient() {
       ) : (
         <div className="grid gap-8 lg:grid-cols-2">
           <section className="space-y-3">
-            <h2 className="font-display text-xl font-semibold tracking-tight">
+            <h2 className="font-display text-xl font-bold tracking-tight">
               Teaching
             </h2>
             {owned.length === 0 ? (
@@ -175,7 +175,7 @@ export function ClassesClient() {
             )}
           </section>
           <section className="space-y-3">
-            <h2 className="font-display text-xl font-semibold tracking-tight">
+            <h2 className="font-display text-xl font-bold tracking-tight">
               Enrolled
             </h2>
             {joined.length === 0 ? (

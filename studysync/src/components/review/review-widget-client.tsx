@@ -49,7 +49,7 @@ export function ReviewWidgetClient({
     <div className="mx-auto flex min-h-[70vh] max-w-lg flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+          <p className="page-kicker">
             Quick review
           </p>
           <h1 className="font-display text-2xl font-semibold tracking-tight">

@@ -100,7 +100,7 @@ export function ShareStudyView({ data }: { data: ShareStudyPayload }) {
       animate={fadeUp.animate}
       transition={fadeUp.transition}
     >
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+      <p className="page-kicker">
         Shared study
       </p>
       <h1 className="font-display mt-2 text-3xl font-semibold tracking-tight">

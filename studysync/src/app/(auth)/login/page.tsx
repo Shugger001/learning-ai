@@ -15,7 +15,7 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 export default function LoginPage() {
   return (
     <main className="grid min-h-screen lg:grid-cols-2">
-      <div className="relative hidden overflow-hidden bg-[hsl(158_40%_12%)] lg:block">
+      <div className="relative hidden overflow-hidden bg-[hsl(162_55%_10%)] lg:block">
         <Image
           src={SIDE_IMAGE}
           alt="Student writing notes at a desk"
@@ -24,10 +24,19 @@ export default function LoginPage() {
           sizes="50vw"
           priority
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-[hsl(158_45%_8%/0.95)] via-[hsl(158_40%_10%/0.45)] to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[hsl(162_55%_7%/0.96)] via-[hsl(162_50%_9%/0.5)] to-transparent" />
+        <motion.div
+          className="absolute right-10 top-0 h-full w-1 bg-signal/70"
+          aria-hidden
+          initial={{ scaleY: 0 }}
+          animate={{ scaleY: 1 }}
+          transition={{ duration: 0.8, ease: EASE }}
+          style={{ transformOrigin: "top" }}
+        />
         <div className="absolute inset-x-0 bottom-0 p-10">
           <div className="signal-bar mb-4" aria-hidden />
-          <p className="font-display text-4xl font-semibold tracking-tight text-white">
+          <p className="flex items-center gap-2.5 font-display text-4xl font-bold tracking-tight text-white">
+            <span className="brand-mark" aria-hidden />
             StudySync
           </p>
           <p className="mt-3 max-w-sm text-sm leading-relaxed text-white/65">
@@ -44,10 +53,11 @@ export default function LoginPage() {
           transition={{ duration: 0.65, ease: EASE }}
         >
           <div className="space-y-3">
-            <p className="font-display text-3xl font-semibold tracking-tight text-foreground lg:hidden">
+            <p className="flex items-center gap-2 font-display text-3xl font-bold tracking-tight text-foreground lg:hidden">
+              <span className="brand-mark" aria-hidden />
               StudySync
             </p>
-            <h1 className="font-display text-3xl font-semibold tracking-tight">
+            <h1 className="font-display text-3xl font-bold tracking-tight">
               Welcome back
             </h1>
             <p className="text-muted-foreground">
@@ -68,7 +78,7 @@ export default function LoginPage() {
               New here?{" "}
               <Link
                 href="/signup"
-                className="font-semibold text-primary underline-offset-4 hover:underline"
+                className="font-bold text-primary underline-offset-4 hover:underline"
               >
                 Create an account
               </Link>

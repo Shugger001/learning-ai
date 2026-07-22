@@ -24,8 +24,8 @@ export const metadata: Metadata = {
   applicationName: "StudySync",
   manifest: "/manifest.webmanifest",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#1f6f54" },
-    { media: "(prefers-color-scheme: dark)", color: "#0f1f1a" },
+    { media: "(prefers-color-scheme: light)", color: "#1a5c45" },
+    { media: "(prefers-color-scheme: dark)", color: "#0c1612" },
   ],
   appleWebApp: {
     capable: true,

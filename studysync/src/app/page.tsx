@@ -15,28 +15,38 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 export default function LandingPage() {
   return (
     <div className="relative min-h-screen overflow-x-hidden">
-      {/* Full-bleed hero - brand first, one composition */}
-      <section className="relative isolate min-h-[100svh] overflow-hidden bg-[hsl(158_40%_12%)]">
+      <section className="relative isolate min-h-[100svh] overflow-hidden bg-[hsl(162_55%_10%)]">
         <motion.div
           className="absolute inset-0"
-          initial={{ scale: 1.06 }}
+          initial={{ scale: 1.08 }}
           animate={{ scale: 1 }}
-          transition={{ duration: 1.6, ease: EASE }}
+          transition={{ duration: 1.8, ease: EASE }}
         >
           <Image
             src={HERO_IMAGE}
             alt="Student studying with notebooks under warm desk light"
             fill
             priority
-            className="object-cover object-[center_30%]"
+            className="object-cover object-[center_28%]"
             sizes="100vw"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-[hsl(158_45%_8%/0.92)] via-[hsl(158_40%_10%/0.72)] to-[hsl(158_35%_12%/0.35)]" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[hsl(158_45%_6%/0.85)] via-transparent to-[hsl(158_40%_10%/0.25)]" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[hsl(162_55%_7%/0.94)] via-[hsl(162_50%_9%/0.78)] to-[hsl(162_40%_12%/0.28)]" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[hsl(162_55%_5%/0.9)] via-transparent to-[hsl(162_45%_10%/0.3)]" />
         </motion.div>
 
+        {/* Signal slash accent */}
+        <motion.div
+          className="pointer-events-none absolute -right-8 top-24 h-[120%] w-1 origin-top bg-signal/80 sm:right-[18%] sm:w-1.5"
+          aria-hidden
+          initial={{ scaleY: 0, opacity: 0 }}
+          animate={{ scaleY: 1, opacity: 1 }}
+          transition={{ duration: 0.9, delay: 0.35, ease: EASE }}
+          style={{ transform: "rotate(12deg)" }}
+        />
+
         <header className="relative z-10 mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-          <span className="font-display text-lg font-semibold tracking-tight text-white">
+          <span className="flex items-center gap-2.5 font-display text-lg font-bold tracking-tight text-white">
+            <span className="brand-mark" aria-hidden />
             StudySync
           </span>
           <div className="flex items-center gap-2">
@@ -61,31 +71,38 @@ export default function LandingPage() {
         <div className="relative z-10 mx-auto flex min-h-[calc(100svh-4rem)] max-w-6xl flex-col justify-end px-4 pb-20 pt-24 sm:px-6 sm:pb-28">
           <motion.div
             className="max-w-2xl space-y-6"
-            initial={{ opacity: 0, y: 28 }}
+            initial={{ opacity: 0, y: 32 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.85, delay: 0.12, ease: EASE }}
+            transition={{ duration: 0.9, delay: 0.1, ease: EASE }}
           >
-            <p className="font-display text-[clamp(3.5rem,12vw,7.5rem)] font-semibold leading-[0.88] tracking-tight text-white">
+            <p className="font-display text-[clamp(3.75rem,13vw,8rem)] font-bold leading-[0.85] tracking-tight text-white">
               StudySync
             </p>
-            <div className="signal-bar" aria-hidden />
-            <h1 className="max-w-lg text-xl font-medium leading-snug text-white/90 sm:text-2xl">
+            <motion.div
+              className="signal-bar"
+              aria-hidden
+              initial={{ scaleX: 0 }}
+              animate={{ scaleX: 1 }}
+              transition={{ duration: 0.55, delay: 0.45, ease: EASE }}
+              style={{ transformOrigin: "left" }}
+            />
+            <h1 className="max-w-lg text-xl font-medium leading-snug text-white/92 sm:text-2xl">
               Lectures become lasting memory.
             </h1>
-            <p className="max-w-md text-base leading-relaxed text-white/65 sm:text-lg">
+            <p className="max-w-md text-base leading-relaxed text-white/62 sm:text-lg">
               Upload once. Practice with notes, flashcards, quizzes, chat, and
               podcasts built for recall.
             </p>
             <motion.div
               className="flex flex-wrap gap-3 pt-2"
-              initial={{ opacity: 0, y: 12 }}
+              initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.55, delay: 0.4, ease: EASE }}
+              transition={{ duration: 0.55, delay: 0.5, ease: EASE }}
             >
               <Button
                 asChild
                 size="lg"
-                className="h-12 bg-signal px-8 text-accent-foreground hover:bg-signal/90"
+                className="h-12 bg-signal px-8 text-accent-foreground shadow-[4px_4px_0_hsl(162_55%_6%)] hover:bg-signal/90 hover:shadow-[2px_2px_0_hsl(162_55%_6%)]"
               >
                 <Link href="/signup">
                   Start studying
@@ -96,7 +113,7 @@ export default function LandingPage() {
                 asChild
                 variant="outline"
                 size="lg"
-                className="h-12 border-white/25 bg-transparent px-8 text-white hover:bg-white/10 hover:text-white"
+                className="h-12 border-white/30 bg-transparent px-8 text-white hover:bg-white/10 hover:text-white"
               >
                 <Link href="/login">I have an account</Link>
               </Button>
@@ -105,7 +122,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* One job: how it works */}
       <section className="relative mx-auto max-w-6xl px-4 py-24 sm:px-6 sm:py-32">
         <motion.div
           className="max-w-xl"
@@ -114,15 +130,13 @@ export default function LandingPage() {
           viewport={{ once: true, margin: "-80px" }}
           transition={{ duration: 0.6, ease: EASE }}
         >
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-            How it works
-          </p>
-          <h2 className="font-display mt-3 text-3xl font-semibold tracking-tight sm:text-5xl">
+          <p className="page-kicker">How it works</p>
+          <h2 className="font-display mt-3 text-3xl font-bold tracking-tight sm:text-5xl">
             Capture. Structure. Practice.
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
-            One pass from lecture to active recall-without the busywork of
-            building decks by hand.
+            One pass from lecture to active recall—without building decks by
+            hand.
           </p>
         </motion.div>
 
@@ -131,7 +145,7 @@ export default function LandingPage() {
             {
               step: "01",
               title: "Capture once",
-              body: "YouTube, live recording, PDF, slides, video, or text-cleaned automatically.",
+              body: "YouTube, live recording, PDF, slides, video, or text—cleaned automatically.",
             },
             {
               step: "02",
@@ -152,10 +166,10 @@ export default function LandingPage() {
               viewport={{ once: true, margin: "-40px" }}
               transition={{ duration: 0.5, delay: i * 0.1, ease: EASE }}
             >
-              <span className="font-display text-4xl font-semibold text-primary/25">
+              <span className="font-display text-5xl font-bold text-signal/40">
                 {item.step}
               </span>
-              <h3 className="font-display text-xl font-semibold tracking-tight">
+              <h3 className="font-display text-xl font-bold tracking-tight">
                 {item.title}
               </h3>
               <p className="text-[15px] leading-relaxed text-muted-foreground">
@@ -166,14 +180,13 @@ export default function LandingPage() {
         </ol>
       </section>
 
-      {/* Product proof - full-bleed forest plane */}
-      <section className="relative overflow-hidden bg-[hsl(158_40%_11%)] text-white">
+      <section className="relative overflow-hidden bg-[hsl(162_55%_10%)] text-white">
         <div
           className="pointer-events-none absolute inset-0"
           aria-hidden
           style={{
             background:
-              "radial-gradient(ellipse 55% 70% at 85% 20%, hsl(38 92% 52% / 0.18), transparent 55%), radial-gradient(ellipse 40% 50% at 5% 90%, hsl(195 40% 40% / 0.15), transparent 50%)",
+              "radial-gradient(ellipse 55% 70% at 88% 15%, hsl(40 96% 50% / 0.22), transparent 55%), radial-gradient(ellipse 40% 50% at 5% 90%, hsl(198 45% 35% / 0.18), transparent 50%)",
           }}
         />
         <div className="relative mx-auto grid max-w-6xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:items-center lg:gap-16 lg:py-28">
@@ -185,12 +198,12 @@ export default function LandingPage() {
             transition={{ duration: 0.65, ease: EASE }}
           >
             <div className="signal-bar" aria-hidden />
-            <h2 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+            <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
               Review. Ask. Listen.
             </h2>
             <p className="max-w-md text-[15px] leading-relaxed text-white/65">
               One workspace for notes, spaced flashcards, quizzes, chat, and
-              podcasts-so the next action is always obvious.
+              podcasts—so the next action is always obvious.
             </p>
           </motion.div>
 
@@ -205,10 +218,11 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <footer className="border-t border-border/80 bg-background/80">
+      <footer className="ink-rule bg-background/90">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-10 sm:px-6">
           <div>
-            <p className="font-display text-lg font-semibold tracking-tight">
+            <p className="flex items-center gap-2 font-display text-lg font-bold tracking-tight">
+              <span className="brand-mark" aria-hidden />
               StudySync
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -224,7 +238,7 @@ export default function LandingPage() {
             </Link>
             <Link
               href="/signup"
-              className="inline-flex items-center gap-1 font-semibold text-primary"
+              className="inline-flex items-center gap-1 font-bold text-primary"
             >
               Get started
               <ArrowRight className="h-3.5 w-3.5" />

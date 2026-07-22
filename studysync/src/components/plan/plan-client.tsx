@@ -87,10 +87,10 @@ export function PlanClient() {
   return (
     <div className="space-y-8">
       <div className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+        <p className="page-kicker">
           Spaced plan
         </p>
-        <h1 className="font-display text-3xl font-semibold tracking-tight">
+        <h1 className="font-display text-3xl font-bold tracking-tight">
           Week plan
         </h1>
         <p className="max-w-xl text-sm text-muted-foreground">

@@ -37,7 +37,7 @@ function UnsubscribeInner() {
 
   return (
     <div className="mx-auto flex min-h-[60vh] max-w-md flex-col justify-center gap-4 px-4 py-16 text-center">
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+      <p className="page-kicker">
         Email
       </p>
       <h1 className="font-display text-3xl font-semibold tracking-tight">

@@ -78,7 +78,7 @@ export function RoomDetailClient() {
   return (
     <div className="space-y-8">
       <div className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+        <p className="page-kicker">
           Study room
         </p>
         <h1 className="font-display text-3xl font-semibold tracking-tight">

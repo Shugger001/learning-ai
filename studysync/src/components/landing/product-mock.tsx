@@ -58,7 +58,7 @@ export function LandingProductMock() {
   }, []);
 
   return (
-    <div className="border border-white/15 bg-white/[0.05] p-5 sm:p-7">
+    <div className="border border-white/20 bg-white/[0.06] p-5 shadow-[8px_8px_0_hsl(40_96%_50%/0.25)] sm:p-7">
       <div className="mb-5 flex gap-3 text-xs font-semibold tracking-wide text-white/45">
         {tabs.map((tab, i) => (
           <span

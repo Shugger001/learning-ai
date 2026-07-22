@@ -272,22 +272,21 @@ export function DashboardClient({
 
   return (
     <>
-      <section className="relative overflow-hidden border border-border/80 bg-card/60">
+      <section className="relative overflow-hidden shell-panel">
         <div
           className="pointer-events-none absolute inset-0"
           aria-hidden
           style={{
             background:
-              "linear-gradient(135deg, hsl(158 40% 22% / 0.08) 0%, transparent 45%), radial-gradient(ellipse 70% 90% at 100% 0%, hsl(38 92% 52% / 0.12), transparent 55%)",
+              "linear-gradient(135deg, hsl(162 55% 18% / 0.1) 0%, transparent 48%), radial-gradient(ellipse 70% 90% at 100% 0%, hsl(40 96% 50% / 0.16), transparent 55%)",
           }}
         />
+        <div className="absolute left-0 top-0 h-full w-1 bg-signal" aria-hidden />
         <div className="relative flex flex-col gap-8 px-6 py-8 sm:px-8 sm:py-10 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-xl space-y-4">
             <div className="signal-bar" aria-hidden />
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-              Library
-            </p>
-            <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+            <p className="page-kicker">Library</p>
+            <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
               {firstName ? `Welcome back, ${firstName}` : "Your studies"}
             </h1>
             <p className="text-[15px] leading-relaxed text-muted-foreground">

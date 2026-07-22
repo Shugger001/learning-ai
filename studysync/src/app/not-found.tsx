@@ -11,7 +11,7 @@ export default function NotFound() {
       className="flex min-h-screen flex-col items-center justify-center gap-4 px-4 text-center"
       {...fadeUp}
     >
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+      <p className="page-kicker">
         404
       </p>
       <h1 className="font-display text-3xl font-semibold tracking-tight">

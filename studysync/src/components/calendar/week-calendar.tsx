@@ -68,7 +68,7 @@ export function WeekCalendar({
     <motion.div className="space-y-8" {...fadeUp}>
       <div className="space-y-2">
         <div className="signal-bar" aria-hidden />
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+        <p className="page-kicker">
           Schedule
         </p>
         <h1 className="font-display text-3xl font-semibold tracking-tight">

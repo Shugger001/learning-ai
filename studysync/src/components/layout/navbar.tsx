@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { LogOut, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -16,6 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils/cn";
 import { EASE } from "@/lib/motion";
 
 interface NavbarProps {
@@ -23,8 +24,16 @@ interface NavbarProps {
   userName?: string | null;
 }
 
+const PRIMARY_LINKS = [
+  { href: "/review", label: "Review" },
+  { href: "/plan", label: "Plan" },
+  { href: "/classes", label: "Classes" },
+  { href: "/progress", label: "Progress" },
+] as const;
+
 export function Navbar({ userEmail, userName }: NavbarProps) {
   const router = useRouter();
+  const pathname = usePathname();
 
   async function signOut() {
     const supabase = createClient();
@@ -35,99 +44,53 @@ export function Navbar({ userEmail, userName }: NavbarProps) {
 
   return (
     <motion.header
-      className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur-md"
+      className="sticky top-0 z-40 border-b border-border/80 bg-background/90 backdrop-blur-md"
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: EASE }}
     >
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
+      <div className="h-0.5 w-full bg-signal" aria-hidden />
+      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
         <Link
           href="/dashboard"
-          className="font-display text-lg font-semibold tracking-tight"
+          className="flex items-center gap-2 font-display text-lg font-bold tracking-tight"
           aria-label="StudySync home"
         >
+          <span className="brand-mark" aria-hidden />
           StudySync
         </Link>
 
+        <nav
+          className="hidden items-center gap-0.5 md:flex"
+          aria-label="Primary"
+        >
+          {PRIMARY_LINKS.map((link) => {
+            const active =
+              pathname === link.href || pathname.startsWith(`${link.href}/`);
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={cn(
+                  "px-2.5 py-1.5 text-sm font-semibold tracking-tight transition-colors",
+                  active
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
+        </nav>
+
         <div className="flex items-center gap-1.5 sm:gap-2">
           <GlobalSearch />
-          <Button asChild size="sm" className="shrink-0">
+          <Button asChild size="sm" className="shrink-0 bg-signal text-accent-foreground hover:bg-signal/90">
             <Link href="/dashboard?new=1">
               <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">New study</span>
+              <span className="hidden sm:inline">New</span>
             </Link>
-          </Button>
-          <Button
-            asChild
-            variant="ghost"
-            size="sm"
-            className="hidden sm:inline-flex"
-          >
-            <Link href="/plan">Plan</Link>
-          </Button>
-          <Button
-            asChild
-            variant="ghost"
-            size="sm"
-            className="hidden sm:inline-flex"
-          >
-            <Link href="/rooms">Rooms</Link>
-          </Button>
-          <Button
-            asChild
-            variant="ghost"
-            size="sm"
-            className="hidden sm:inline-flex"
-          >
-            <Link href="/classes">Classes</Link>
-          </Button>
-          <Button
-            asChild
-            variant="ghost"
-            size="sm"
-            className="hidden sm:inline-flex"
-          >
-            <Link href="/calendar">Calendar</Link>
-          </Button>
-          <Button
-            asChild
-            variant="ghost"
-            size="sm"
-            className="hidden sm:inline-flex"
-          >
-            <Link href="/review">Review</Link>
-          </Button>
-          <Button
-            asChild
-            variant="ghost"
-            size="sm"
-            className="hidden sm:inline-flex"
-          >
-            <Link href="/exam">Exam</Link>
-          </Button>
-          <Button
-            asChild
-            variant="ghost"
-            size="sm"
-            className="hidden sm:inline-flex"
-          >
-            <Link href="/progress">Progress</Link>
-          </Button>
-          <Button
-            asChild
-            variant="ghost"
-            size="sm"
-            className="hidden sm:inline-flex"
-          >
-            <Link href="/library">Library</Link>
-          </Button>
-          <Button
-            asChild
-            variant="ghost"
-            size="sm"
-            className="hidden sm:inline-flex"
-          >
-            <Link href="/pricing">Pricing</Link>
           </Button>
           <ThemeToggle />
           <DropdownMenu>
@@ -146,35 +109,32 @@ export function Navbar({ userEmail, userName }: NavbarProps) {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild className="cursor-pointer sm:hidden">
-                <Link href="/dashboard?new=1">New study</Link>
+              <DropdownMenuItem asChild className="cursor-pointer md:hidden">
+                <Link href="/review">Review</Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild className="cursor-pointer">
-                <Link href="/plan">Week plan</Link>
+              <DropdownMenuItem asChild className="cursor-pointer md:hidden">
+                <Link href="/plan">Plan</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild className="cursor-pointer md:hidden">
+                <Link href="/classes">Classes</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild className="cursor-pointer md:hidden">
+                <Link href="/progress">Progress</Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild className="cursor-pointer">
                 <Link href="/rooms">Study rooms</Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild className="cursor-pointer">
-                <Link href="/classes">Classes</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild className="cursor-pointer">
                 <Link href="/calendar">Calendar</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild className="cursor-pointer">
-                <Link href="/review">Review today</Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild className="cursor-pointer">
                 <Link href="/exam">Exam campaigns</Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild className="cursor-pointer">
-                <Link href="/progress">Progress</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild className="cursor-pointer">
                 <Link href="/library">Premade library</Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild className="cursor-pointer">
-                <Link href="/pricing">Pricing & plan</Link>
+                <Link href="/pricing">Pricing</Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={signOut} className="cursor-pointer">

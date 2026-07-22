@@ -13,10 +13,10 @@ export default async function LibraryPage() {
     <div className="space-y-8">
       <div className="space-y-2">
         <div className="signal-bar" aria-hidden />
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+        <p className="page-kicker">
           Premade library
         </p>
-        <h1 className="font-display text-3xl font-semibold tracking-tight">
+        <h1 className="font-display text-3xl font-bold tracking-tight">
           Browse study packs
         </h1>
         <p className="max-w-xl text-[15px] text-muted-foreground">

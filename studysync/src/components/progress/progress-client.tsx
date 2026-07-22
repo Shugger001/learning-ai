@@ -224,10 +224,10 @@ export function ProgressClient({ data }: { data: ProgressPayload }) {
     <motion.div className="space-y-10" {...fadeUp}>
       <div className="space-y-2">
         <div className="signal-bar" aria-hidden />
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+        <p className="page-kicker">
           Memory
         </p>
-        <h1 className="font-display text-3xl font-semibold tracking-tight">
+        <h1 className="font-display text-3xl font-bold tracking-tight">
           Progress hub
         </h1>
         <p className="max-w-xl text-[15px] text-muted-foreground">
@@ -292,7 +292,7 @@ export function ProgressClient({ data }: { data: ProgressPayload }) {
 
       {data.achievements.length > 0 ? (
         <section className="space-y-3">
-          <h2 className="font-display text-xl font-semibold tracking-tight">
+          <h2 className="font-display text-xl font-bold tracking-tight">
             Achievements
           </h2>
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -322,7 +322,7 @@ export function ProgressClient({ data }: { data: ProgressPayload }) {
       <section className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
-            <h2 className="font-display text-xl font-semibold tracking-tight">
+            <h2 className="font-display text-xl font-bold tracking-tight">
               Mastery map
             </h2>
             <p className="text-sm text-muted-foreground">
@@ -522,7 +522,7 @@ export function ProgressClient({ data }: { data: ProgressPayload }) {
 
       <section className="grid gap-8 lg:grid-cols-2">
         <div className="space-y-3">
-          <h2 className="font-display text-xl font-semibold tracking-tight">
+          <h2 className="font-display text-xl font-bold tracking-tight">
             Due soon
           </h2>
           {data.dueCards.length === 0 ? (
@@ -547,7 +547,7 @@ export function ProgressClient({ data }: { data: ProgressPayload }) {
         </div>
 
         <div className="space-y-3">
-          <h2 className="font-display text-xl font-semibold tracking-tight">
+          <h2 className="font-display text-xl font-bold tracking-tight">
             Weak topics
           </h2>
           {data.weakTopics.length === 0 && data.weakCards.length === 0 ? (
@@ -593,7 +593,7 @@ export function ProgressClient({ data }: { data: ProgressPayload }) {
       </section>
 
       <section className="space-y-3">
-        <h2 className="font-display text-xl font-semibold tracking-tight">
+        <h2 className="font-display text-xl font-bold tracking-tight">
           Recent quiz attempts
         </h2>
         {data.recentAttempts.length === 0 ? (
@@ -619,7 +619,7 @@ export function ProgressClient({ data }: { data: ProgressPayload }) {
       </section>
 
       <section className="space-y-3">
-        <h2 className="font-display text-xl font-semibold tracking-tight">
+        <h2 className="font-display text-xl font-bold tracking-tight">
           Activity
         </h2>
         {data.activity.length === 0 ? (

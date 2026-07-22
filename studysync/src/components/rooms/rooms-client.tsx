@@ -71,10 +71,10 @@ export function RoomsClient() {
   return (
     <div className="space-y-8">
       <div className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+        <p className="page-kicker">
           Live
         </p>
-        <h1 className="font-display text-3xl font-semibold tracking-tight">
+        <h1 className="font-display text-3xl font-bold tracking-tight">
           Study rooms
         </h1>
         <p className="max-w-xl text-sm text-muted-foreground">
@@ -135,7 +135,7 @@ export function RoomsClient() {
       </div>
 
       <section className="space-y-3">
-        <h2 className="font-display text-xl font-semibold tracking-tight">
+        <h2 className="font-display text-xl font-bold tracking-tight">
           Your active rooms
         </h2>
         {rooms.length === 0 ? (

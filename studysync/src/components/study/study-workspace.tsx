@@ -334,7 +334,7 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
             }}
           />
         ) : null}
-        <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+        <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
           {study.title}
         </h1>
         {study.source_url ? (

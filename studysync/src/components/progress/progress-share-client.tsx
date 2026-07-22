@@ -67,7 +67,7 @@ export function ProgressShareClient() {
   return (
     <div className="mx-auto max-w-2xl space-y-8 px-4 py-12">
       <div className="space-y-2 text-center">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+        <p className="page-kicker">
           StudySync snapshot
         </p>
         <h1 className="font-display text-3xl font-semibold tracking-tight">

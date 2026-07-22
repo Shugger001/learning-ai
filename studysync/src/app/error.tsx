@@ -17,7 +17,7 @@ export default function Error({
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-4 px-4 text-center">
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+      <p className="page-kicker">
         Something went wrong
       </p>
       <h1 className="font-display text-2xl font-semibold tracking-tight">
