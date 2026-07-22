@@ -8,10 +8,17 @@ import { cn } from "@/lib/utils/cn";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ProcessingBar } from "@/components/ui/processing-bar";
+import { MarkdownMath } from "@/components/ui/markdown-math";
 import type { ApiResponse } from "@/types/api";
-import type { Quiz, QuizAttempt } from "@/types/database";
+import type { Quiz, QuizAttempt, QuizType } from "@/types/database";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
+
+const PRACTICE_TYPES: { id: QuizType; label: string }[] = [
+  { id: "mcq", label: "Multiple choice" },
+  { id: "fill_blank", label: "Fill blank" },
+  { id: "short_answer", label: "Short answer" },
+];
 
 function CountUp({ value }: { value: number }) {
   const [display, setDisplay] = useState(0);
@@ -56,6 +63,11 @@ export function QuizPanel({
   const [lastAttempt, setLastAttempt] = useState<QuizAttempt | null>(null);
   const [reviewIds, setReviewIds] = useState<string[] | null>(null);
   const [savedAttempt, setSavedAttempt] = useState(false);
+  const [practiceTypes, setPracticeTypes] = useState<QuizType[]>([
+    "mcq",
+    "fill_blank",
+    "short_answer",
+  ]);
 
   useEffect(() => {
     if (readOnly) return;
@@ -63,7 +75,8 @@ export function QuizPanel({
       .then((r) => r.json())
       .then((json: ApiResponse<QuizAttempt | null>) => {
         if (json.success) setLastAttempt(json.data);
-      });
+      })
+      .catch(() => undefined);
   }, [studyId, readOnly]);
 
   const queue = useMemo(() => {
@@ -77,7 +90,9 @@ export function QuizPanel({
   const answered = selected !== null;
   const isCorrect =
     answered &&
-    selected?.trim().toLowerCase() === quiz.correct_answer.trim().toLowerCase();
+    !!quiz &&
+    selected?.trim().toLowerCase() ===
+      (quiz.correct_answer ?? "").trim().toLowerCase();
   const atEnd = answered && index === queue.length - 1;
 
   const progress = useMemo(() => {
@@ -92,13 +107,49 @@ export function QuizPanel({
     return { correct, total: answeredIds.length || ids.length };
   }, [queue, results]);
 
+  function togglePracticeType(id: QuizType) {
+    setPracticeTypes((prev) => {
+      if (prev.includes(id)) {
+        if (prev.length === 1) return prev;
+        return prev.filter((t) => t !== id);
+      }
+      return [...prev, id];
+    });
+  }
+
+  function PracticeTypePicker() {
+    return (
+      <div className="flex flex-wrap gap-2">
+        {PRACTICE_TYPES.map(({ id, label }) => {
+          const active = practiceTypes.includes(id);
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => togglePracticeType(id)}
+              className={cn(
+                "border px-2.5 py-1 text-xs transition-colors",
+                active
+                  ? "border-primary bg-primary/10 text-foreground"
+                  : "border-border/70 text-muted-foreground hover:bg-muted/40"
+              )}
+              aria-pressed={active}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
   async function generateMore() {
     setLoading(true);
     setError(null);
     const res = await fetch(`/api/studies/${studyId}/practice`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ count: 5 }),
+      body: JSON.stringify({ count: 5, types: practiceTypes }),
     });
     const json = (await res.json()) as ApiResponse<Quiz[]>;
     setLoading(false);
@@ -114,7 +165,7 @@ export function QuizPanel({
     const value = typed.trim();
     setSelected(value);
     recordAnswer(
-      value.toLowerCase() === quiz.correct_answer.trim().toLowerCase()
+      value.toLowerCase() === (quiz.correct_answer ?? "").trim().toLowerCase()
     );
   }
 
@@ -170,10 +221,13 @@ export function QuizPanel({
           {readOnly ? null : " Generate practice questions from this study."}
         </p>
         {!readOnly ? (
-          <Button onClick={() => void generateMore()} disabled={loading}>
-            {loading ? <Loader2 className="animate-spin" /> : null}
-            Generate practice
-          </Button>
+          <>
+            <PracticeTypePicker />
+            <Button onClick={() => void generateMore()} disabled={loading}>
+              {loading ? <Loader2 className="animate-spin" /> : null}
+              Generate practice
+            </Button>
+          </>
         ) : null}
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
       </div>
@@ -214,10 +268,10 @@ export function QuizPanel({
                   key={q.id}
                   className="border border-border/70 px-3 py-2 text-sm"
                 >
-                  <p className="font-medium">{q.question}</p>
-                  <p className="mt-1 text-muted-foreground">
-                    Answer: {q.correct_answer}
-                  </p>
+                  <MarkdownMath className="font-medium">{q.question}</MarkdownMath>
+                  <div className="mt-1 text-muted-foreground">
+                    Answer: <MarkdownMath inline>{q.correct_answer}</MarkdownMath>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -285,7 +339,7 @@ export function QuizPanel({
           className="space-y-6"
         >
           <h2 className="font-display text-xl font-semibold leading-snug tracking-tight sm:text-2xl">
-            {quiz.question}
+            <MarkdownMath>{quiz.question}</MarkdownMath>
           </h2>
 
           {type === "mcq" ? (
@@ -305,7 +359,7 @@ export function QuizPanel({
                         setSelected(option);
                         recordAnswer(
                           option.trim().toLowerCase() ===
-                            quiz.correct_answer.trim().toLowerCase()
+                            (quiz.correct_answer ?? "").trim().toLowerCase()
                         );
                       }}
                       animate={
@@ -325,7 +379,7 @@ export function QuizPanel({
                           "border-destructive bg-destructive/15 text-foreground"
                       )}
                     >
-                      {option}
+                      <MarkdownMath inline>{option}</MarkdownMath>
                     </motion.button>
                   </li>
                 );
@@ -372,12 +426,15 @@ export function QuizPanel({
                 {isCorrect ? "Correct" : "Not quite"}
               </p>
               {!isCorrect ? (
-                <p className="mt-1 text-muted-foreground">
-                  Model answer: {quiz.correct_answer}
-                </p>
+                <div className="mt-1 text-muted-foreground">
+                  Model answer:{" "}
+                  <MarkdownMath inline>{quiz.correct_answer}</MarkdownMath>
+                </div>
               ) : null}
               {quiz.explanation ? (
-                <p className="mt-1 text-muted-foreground">{quiz.explanation}</p>
+                <MarkdownMath className="mt-1 text-muted-foreground">
+                  {quiz.explanation}
+                </MarkdownMath>
               ) : null}
             </motion.div>
           ) : null}
@@ -405,15 +462,18 @@ export function QuizPanel({
         </Button>
         <div className="flex gap-2">
           {atEnd && !readOnly ? (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => void generateMore()}
-              disabled={loading}
-            >
-              {loading ? <Loader2 className="animate-spin" /> : null}
-              More practice
-            </Button>
+            <div className="flex flex-col items-end gap-2">
+              <PracticeTypePicker />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void generateMore()}
+                disabled={loading}
+              >
+                {loading ? <Loader2 className="animate-spin" /> : null}
+                More practice
+              </Button>
+            </div>
           ) : null}
           {atEnd ? (
             <Button type="button" onClick={() => void finishSession()}>

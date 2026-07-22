@@ -51,8 +51,8 @@ export function PricingClient({ plan }: PricingClientProps) {
           Study without limits
         </h1>
         <p className="text-[15px] text-muted-foreground">
-          Free covers getting started. Pro unlocks unlimited uploads, chat, and
-          podcasts.
+          Free covers getting started with a 30-day usage window. Pro unlocks
+          unlimited uploads, chat, and podcasts.
         </p>
       </motion.div>
 
@@ -82,6 +82,10 @@ export function PricingClient({ plan }: PricingClientProps) {
             <li className="flex gap-2">
               <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
               {FREE_LIMITS.podcasts} podcasts / 30 days
+            </li>
+            <li className="flex gap-2">
+              <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+              Notes, flashcards, quizzes, mind maps
             </li>
           </ul>
           <p className="mt-6 text-sm font-medium">

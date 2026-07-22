@@ -2,18 +2,15 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import ReactMarkdown from "react-markdown";
-import remarkMath from "remark-math";
-import rehypeKatex from "rehype-katex";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { QuizPanel } from "@/components/study/quiz-panel";
+import { MarkdownMath } from "@/components/ui/markdown-math";
 import { cn } from "@/lib/utils/cn";
 import { EASE, fadeUp } from "@/lib/motion";
 import type { Flashcard, Note, Quiz, Study } from "@/types/database";
-import "katex/dist/katex.min.css";
 
 export interface ShareStudyPayload {
   study: Pick<Study, "id" | "title" | "content_type" | "status" | "share_token">;
@@ -53,9 +50,11 @@ function ShareFlashcards({ cards }: { cards: Flashcard[] }) {
               "flex min-h-[12rem] w-full items-center justify-center border border-border/70 bg-card/50 p-8 text-center hover:bg-accent/30"
             )}
           >
-            <p className="font-display text-lg font-semibold leading-snug tracking-tight sm:text-xl">
-              {flipped ? card.answer : card.question}
-            </p>
+            <div className="font-display text-lg font-semibold leading-snug tracking-tight sm:text-xl">
+              <MarkdownMath>
+                {flipped ? card.answer : card.question}
+              </MarkdownMath>
+            </div>
           </motion.button>
         </AnimatePresence>
       </div>
@@ -122,19 +121,14 @@ export function ShareStudyView({ data }: { data: ShareStudyPayload }) {
               <h2 className="text-sm font-medium text-muted-foreground">
                 Summary
               </h2>
-              <p className="leading-relaxed text-foreground/90">
+              <MarkdownMath className="leading-relaxed text-foreground/90">
                 {data.notes.summary}
-              </p>
+              </MarkdownMath>
             </section>
           ) : null}
           {data.notes?.content ? (
             <section className="prose prose-sm max-w-none dark:prose-invert">
-              <ReactMarkdown
-                remarkPlugins={[remarkMath]}
-                rehypePlugins={[rehypeKatex]}
-              >
-                {data.notes.content}
-              </ReactMarkdown>
+              <MarkdownMath>{data.notes.content}</MarkdownMath>
             </section>
           ) : (
             <p className="text-sm text-muted-foreground">No notes shared.</p>

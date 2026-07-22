@@ -327,14 +327,27 @@ export function DashboardClient({
               </Link>
             </div>
             {usage ? (
-              <p className="text-xs text-muted-foreground">
-                Free plan · {usage.uploads}/{FREE_LIMITS.uploads} uploads ·{" "}
-                {usage.chat}/{FREE_LIMITS.chat} chat · {usage.podcasts}/
-                {FREE_LIMITS.podcasts} podcasts left
-                {usage.uploads <= 2 || usage.chat <= 5 || usage.podcasts <= 1
-                  ? " - nearing limit"
-                  : ""}
-              </p>
+              <div className="space-y-1 text-xs text-muted-foreground">
+                <p>
+                  Free plan · {usage.uploads}/{FREE_LIMITS.uploads} uploads ·{" "}
+                  {usage.chat}/{FREE_LIMITS.chat} chat · {usage.podcasts}/
+                  {FREE_LIMITS.podcasts} podcasts left
+                  {usage.uploads <= 2 || usage.chat <= 5 || usage.podcasts <= 1
+                    ? " - nearing limit"
+                    : ""}
+                </p>
+                <p>
+                  Resets{" "}
+                  {new Date(usage.resetsAt).toLocaleDateString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                  })}
+                  {" · "}
+                  <Link href="/pricing" className="text-primary hover:underline">
+                    Upgrade for unlimited
+                  </Link>
+                </p>
+              </div>
             ) : null}
           </div>
 

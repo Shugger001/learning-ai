@@ -88,6 +88,18 @@ export async function POST(request: Request, { params }: RouteParams) {
     .select("*")
     .single();
 
-  if (error) return apiError(error.message, 500);
+  if (error) {
+    if (
+      error.message.includes("quiz_attempts") ||
+      error.code === "42P01" ||
+      error.code === "PGRST205"
+    ) {
+      return apiError(
+        "Quiz history is not enabled yet. Run the product-depth migration in Supabase.",
+        503
+      );
+    }
+    return apiError(error.message, 500);
+  }
   return apiSuccess(data, 201);
 }

@@ -30,12 +30,28 @@ export async function POST(request: Request) {
     event.type === "checkout.session.completed" ||
     event.type === "customer.subscription.updated"
   ) {
-    const obj = event.data.object as Stripe.Checkout.Session | Stripe.Subscription;
-    const userId =
+    const obj = event.data.object as
+      | Stripe.Checkout.Session
+      | Stripe.Subscription;
+    let userId =
       "metadata" in obj ? obj.metadata?.user_id : undefined;
+
+    if (
+      !userId &&
+      event.type === "checkout.session.completed" &&
+      "client_reference_id" in obj
+    ) {
+      userId = obj.client_reference_id ?? undefined;
+    }
+
+    const admin = createAdminClient();
     if (userId) {
-      const admin = createAdminClient();
       await admin.from("profiles").update({ plan: "pro" }).eq("user_id", userId);
+    } else if ("customer" in obj && obj.customer) {
+      await admin
+        .from("profiles")
+        .update({ plan: "pro" })
+        .eq("stripe_customer_id", String(obj.customer));
     }
   }
 

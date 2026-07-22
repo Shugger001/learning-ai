@@ -68,7 +68,11 @@ export async function POST() {
       ],
       success_url: `${origin}/dashboard?upgraded=1`,
       cancel_url: `${origin}/pricing`,
+      client_reference_id: user.id,
       metadata: { user_id: user.id },
+      subscription_data: {
+        metadata: { user_id: user.id },
+      },
     });
 
     return apiSuccess({ mode: "stripe", url: session.url });

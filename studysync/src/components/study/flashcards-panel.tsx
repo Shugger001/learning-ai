@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { MarkdownMath } from "@/components/ui/markdown-math";
 import { cn } from "@/lib/utils/cn";
 import type { ApiResponse } from "@/types/api";
 import type { Flashcard } from "@/types/database";
@@ -199,9 +200,9 @@ export function FlashcardsPanel({
                       className="min-h-[140px]"
                     />
                   ) : (
-                    <p className="font-display text-xl font-semibold leading-snug tracking-tight sm:text-2xl">
-                      {card.question}
-                    </p>
+                    <div className="font-display text-xl font-semibold leading-snug tracking-tight sm:text-2xl">
+                      <MarkdownMath>{card.question}</MarkdownMath>
+                    </div>
                   )}
                   {!editing ? (
                     <p className="mt-8 text-xs text-muted-foreground">
@@ -235,9 +236,9 @@ export function FlashcardsPanel({
                       className="min-h-[140px]"
                     />
                   ) : (
-                    <p className="text-lg leading-relaxed sm:text-xl">
-                      {card.answer}
-                    </p>
+                    <div className="text-lg leading-relaxed sm:text-xl">
+                      <MarkdownMath>{card.answer}</MarkdownMath>
+                    </div>
                   )}
                 </div>
               </motion.div>
