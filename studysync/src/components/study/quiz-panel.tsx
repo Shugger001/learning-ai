@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2 } from "lucide-react";
+import { Loader2, Timer } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,11 +38,31 @@ function CountUp({ value }: { value: number }) {
   return <>{display}</>;
 }
 
+function formatClock(totalSec: number) {
+  const m = Math.floor(Math.max(0, totalSec) / 60);
+  const s = Math.max(0, totalSec) % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
 interface QuizPanelProps {
   studyId: string;
   quizzes: Quiz[];
   /** When true, skip persist + generate-more (public share). */
   readOnly?: boolean;
+  /** Timed exam: hide per-question feedback until the end. */
+  examMode?: boolean;
+  /** Exam duration in minutes (default 20). */
+  examMinutes?: number;
+  /** Seed queue from wrong ids (e.g. last attempt). */
+  initialReviewIds?: string[] | null;
+  /** Cap queue length (daily review short quiz). */
+  maxQuestions?: number;
+  /** Called after a saved attempt finishes. */
+  onComplete?: (attempt: {
+    score: number;
+    total: number;
+    wrongIds: string[];
+  }) => void;
 }
 
 type Mode = "quiz" | "results";
@@ -51,6 +71,11 @@ export function QuizPanel({
   studyId,
   quizzes: initial,
   readOnly = false,
+  examMode = false,
+  examMinutes = 20,
+  initialReviewIds = null,
+  maxQuestions,
+  onComplete,
 }: QuizPanelProps) {
   const [quizzes, setQuizzes] = useState(initial);
   const [index, setIndex] = useState(0);
@@ -61,13 +86,26 @@ export function QuizPanel({
   const [results, setResults] = useState<Record<string, boolean>>({});
   const [mode, setMode] = useState<Mode>("quiz");
   const [lastAttempt, setLastAttempt] = useState<QuizAttempt | null>(null);
-  const [reviewIds, setReviewIds] = useState<string[] | null>(null);
+  const [reviewIds, setReviewIds] = useState<string[] | null>(initialReviewIds);
   const [savedAttempt, setSavedAttempt] = useState(false);
   const [practiceTypes, setPracticeTypes] = useState<QuizType[]>([
     "mcq",
     "fill_blank",
     "short_answer",
   ]);
+  const [secondsLeft, setSecondsLeft] = useState(
+    examMode ? Math.max(1, examMinutes) * 60 : 0
+  );
+  const finishingRef = useRef(false);
+  const finishSessionRef = useRef<() => Promise<void>>(async () => undefined);
+
+  useEffect(() => {
+    setQuizzes(initial);
+  }, [initial]);
+
+  useEffect(() => {
+    if (initialReviewIds?.length) setReviewIds(initialReviewIds);
+  }, [initialReviewIds]);
 
   useEffect(() => {
     if (readOnly) return;
@@ -80,9 +118,14 @@ export function QuizPanel({
   }, [studyId, readOnly]);
 
   const queue = useMemo(() => {
-    if (!reviewIds) return quizzes;
-    return quizzes.filter((q) => reviewIds.includes(q.id));
-  }, [quizzes, reviewIds]);
+    let list = reviewIds
+      ? quizzes.filter((q) => reviewIds.includes(q.id))
+      : quizzes;
+    if (maxQuestions && maxQuestions > 0) {
+      list = list.slice(0, maxQuestions);
+    }
+    return list;
+  }, [quizzes, reviewIds, maxQuestions]);
 
   const quiz = queue[index];
   const options = Array.isArray(quiz?.options) ? quiz.options : [];
@@ -106,6 +149,78 @@ export function QuizPanel({
     const correct = answeredIds.filter((id) => results[id]).length;
     return { correct, total: answeredIds.length || ids.length };
   }, [queue, results]);
+
+  const typeBreakdown = useMemo(() => {
+    const map = new Map<string, { correct: number; total: number }>();
+    for (const q of queue) {
+      if (!(q.id in results)) continue;
+      const key = q.quiz_type ?? "mcq";
+      const row = map.get(key) ?? { correct: 0, total: 0 };
+      row.total += 1;
+      if (results[q.id]) row.correct += 1;
+      map.set(key, row);
+    }
+    return Array.from(map.entries());
+  }, [queue, results]);
+
+  const finishSession = useCallback(async () => {
+    if (finishingRef.current) return;
+    finishingRef.current = true;
+    const ids = queue.map((q) => q.id);
+    const wrong = ids.filter((id) => results[id] === false);
+    const unanswered = ids.filter((id) => !(id in results));
+    const allWrong = [...wrong, ...unanswered];
+    const correct = ids.filter((id) => results[id] === true).length;
+    const total = ids.length;
+    setMode("results");
+    setSavedAttempt(false);
+
+    onComplete?.({ score: correct, total, wrongIds: allWrong });
+
+    if (readOnly) {
+      finishingRef.current = false;
+      return;
+    }
+
+    const res = await fetch(`/api/studies/${studyId}/quiz-attempt`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        score: correct,
+        total,
+        wrong_quiz_ids: allWrong,
+      }),
+    });
+    const json = (await res.json()) as ApiResponse<QuizAttempt>;
+    if (json.success) {
+      setLastAttempt(json.data);
+      setSavedAttempt(true);
+    }
+    finishingRef.current = false;
+  }, [queue, results, readOnly, studyId, onComplete]);
+
+  finishSessionRef.current = finishSession;
+
+  useEffect(() => {
+    if (!examMode || mode !== "quiz" || queue.length === 0) return;
+    setSecondsLeft(Math.max(1, examMinutes) * 60);
+    finishingRef.current = false;
+  }, [examMode, examMinutes, mode, queue.length]);
+
+  useEffect(() => {
+    if (!examMode || mode !== "quiz") return;
+    const id = window.setInterval(() => {
+      setSecondsLeft((s) => {
+        if (s <= 1) {
+          window.clearInterval(id);
+          void finishSessionRef.current();
+          return 0;
+        }
+        return s - 1;
+      });
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [examMode, mode]);
 
   function togglePracticeType(id: QuizType) {
     setPracticeTypes((prev) => {
@@ -174,32 +289,6 @@ export function QuizPanel({
     setResults((prev) => ({ ...prev, [quiz.id]: correct }));
   }
 
-  async function finishSession() {
-    const ids = queue.map((q) => q.id);
-    const wrong = ids.filter((id) => results[id] === false);
-    const correct = ids.filter((id) => results[id] === true).length;
-    const total = ids.length;
-    setMode("results");
-    setSavedAttempt(false);
-
-    if (readOnly) return;
-
-    const res = await fetch(`/api/studies/${studyId}/quiz-attempt`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        score: correct,
-        total,
-        wrong_quiz_ids: wrong,
-      }),
-    });
-    const json = (await res.json()) as ApiResponse<QuizAttempt>;
-    if (json.success) {
-      setLastAttempt(json.data);
-      setSavedAttempt(true);
-    }
-  }
-
   function restart(all = true) {
     const wrong = all
       ? null
@@ -211,6 +300,8 @@ export function QuizPanel({
     setReviewIds(wrong && wrong.length ? wrong : null);
     setMode("quiz");
     setSavedAttempt(false);
+    finishingRef.current = false;
+    if (examMode) setSecondsLeft(Math.max(1, examMinutes) * 60);
   }
 
   if (quizzes.length === 0) {
@@ -249,7 +340,9 @@ export function QuizPanel({
         transition={{ duration: 0.4, ease: EASE }}
       >
         <div className="space-y-2">
-          <p className="text-sm text-muted-foreground">Session complete</p>
+          <p className="text-sm text-muted-foreground">
+            {examMode ? "Exam complete" : "Session complete"}
+          </p>
           <h2 className="font-display text-3xl font-semibold tracking-tight">
             <CountUp value={pct} />%
           </h2>
@@ -258,6 +351,27 @@ export function QuizPanel({
             {savedAttempt ? " · saved" : null}
           </p>
         </div>
+
+        {typeBreakdown.length > 0 ? (
+          <div className="space-y-2">
+            <h3 className="text-sm font-medium">Breakdown</h3>
+            <ul className="grid gap-2 sm:grid-cols-3">
+              {typeBreakdown.map(([t, row]) => (
+                <li
+                  key={t}
+                  className="border border-border/70 px-3 py-2 text-sm"
+                >
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {t.replace("_", " ")}
+                  </p>
+                  <p className="mt-1 font-medium tabular-nums">
+                    {row.correct}/{row.total}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         {wrongQuizzes.length > 0 ? (
           <div className="space-y-2">
@@ -286,7 +400,7 @@ export function QuizPanel({
           </Button>
           {wrongQuizzes.length > 0 ? (
             <Button type="button" variant="outline" onClick={() => restart(false)}>
-              Review wrong
+              Retry wrong only
             </Button>
           ) : null}
           {!readOnly && wrongQuizzes.length > 0 ? (
@@ -309,11 +423,44 @@ export function QuizPanel({
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      {!readOnly && lastAttempt ? (
+      {examMode ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 border border-border/70 bg-muted/30 px-3 py-2 text-sm">
+          <span className="font-medium">Exam mode</span>
+          <span
+            className={cn(
+              "inline-flex items-center gap-1.5 tabular-nums",
+              secondsLeft <= 60 ? "text-destructive" : "text-muted-foreground"
+            )}
+          >
+            <Timer className="h-3.5 w-3.5" />
+            {formatClock(secondsLeft)}
+          </span>
+        </div>
+      ) : !readOnly && lastAttempt ? (
         <p className="text-xs text-muted-foreground">
           Last score: {lastAttempt.score}/{lastAttempt.total} (
           {Math.round((lastAttempt.score / Math.max(1, lastAttempt.total)) * 100)}
           %)
+          {Array.isArray(lastAttempt.wrong_quiz_ids) &&
+          lastAttempt.wrong_quiz_ids.length > 0 ? (
+            <>
+              {" · "}
+              <button
+                type="button"
+                className="underline-offset-2 hover:underline"
+                onClick={() => {
+                  setReviewIds(lastAttempt.wrong_quiz_ids);
+                  setIndex(0);
+                  setSelected(null);
+                  setTyped("");
+                  setResults({});
+                  setMode("quiz");
+                }}
+              >
+                retry wrong
+              </button>
+            </>
+          ) : null}
         </p>
       ) : null}
 
@@ -346,8 +493,10 @@ export function QuizPanel({
             <ul className="space-y-2" role="listbox" aria-label="Answer choices">
               {options.map((option) => {
                 const chosen = selected === option;
-                const showCorrect = answered && option === quiz.correct_answer;
-                const showWrong = answered && chosen && !isCorrect;
+                const showCorrect =
+                  !examMode && answered && option === quiz.correct_answer;
+                const showWrong =
+                  !examMode && answered && chosen && !isCorrect;
                 return (
                   <li key={option}>
                     <motion.button
@@ -364,7 +513,10 @@ export function QuizPanel({
                       }}
                       animate={
                         showCorrect
-                          ? { scale: [1, 1.02, 1], borderColor: "hsl(var(--success))" }
+                          ? {
+                              scale: [1, 1.02, 1],
+                              borderColor: "hsl(var(--success))",
+                            }
                           : showWrong
                             ? { scale: [1, 0.98, 1] }
                             : { scale: 1 }
@@ -373,6 +525,7 @@ export function QuizPanel({
                       className={cn(
                         "w-full border px-4 py-3 text-left text-sm transition-colors",
                         !answered && "hover:bg-accent",
+                        chosen && examMode && "border-primary bg-primary/10",
                         showCorrect &&
                           "border-success bg-success/15 font-medium text-foreground",
                         showWrong &&
@@ -399,12 +552,12 @@ export function QuizPanel({
                 }}
               />
               <Button type="button" onClick={submitTyped} disabled={answered}>
-                Check
+                {examMode ? "Lock in" : "Check"}
               </Button>
             </div>
           )}
 
-          {answered ? (
+          {answered && !examMode ? (
             <motion.div
               initial={{ opacity: 0, y: 6, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -438,6 +591,10 @@ export function QuizPanel({
               ) : null}
             </motion.div>
           ) : null}
+
+          {answered && examMode ? (
+            <p className="text-xs text-muted-foreground">Answer locked in.</p>
+          ) : null}
         </motion.div>
       </AnimatePresence>
 
@@ -461,7 +618,7 @@ export function QuizPanel({
           Previous
         </Button>
         <div className="flex gap-2">
-          {atEnd && !readOnly ? (
+          {atEnd && !readOnly && !examMode ? (
             <div className="flex flex-col items-end gap-2">
               <PracticeTypePicker />
               <Button
@@ -477,7 +634,7 @@ export function QuizPanel({
           ) : null}
           {atEnd ? (
             <Button type="button" onClick={() => void finishSession()}>
-              See results
+              {examMode ? "Submit exam" : "See results"}
             </Button>
           ) : (
             <Button
@@ -495,7 +652,7 @@ export function QuizPanel({
         </div>
       </div>
 
-      {Object.keys(results).length > 0 ? (
+      {!examMode && Object.keys(results).length > 0 ? (
         <p className="text-xs text-muted-foreground">
           Session so far: {sessionScore.correct} correct
         </p>

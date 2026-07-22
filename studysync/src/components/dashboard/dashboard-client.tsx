@@ -238,12 +238,16 @@ export function DashboardClient({
   }
 
   const primaryCta =
-    dueToday > 0 && continueStudy
+    dueToday > 0
       ? {
-          href: `/study/${continueStudy.id}?tab=flashcards`,
+          href: `/review`,
           label: `Review ${dueToday} due card${dueToday === 1 ? "" : "s"}`,
-          secondary: "Continue studying" as const,
-          secondaryHref: `/study/${continueStudy.id}?tab=notes`,
+          secondary: continueStudy
+            ? ("Continue studying" as const)
+            : ("Browse library" as const),
+          secondaryHref: continueStudy
+            ? `/study/${continueStudy.id}?tab=notes`
+            : "/library",
         }
       : continueStudy
         ? {
@@ -281,9 +285,11 @@ export function DashboardClient({
             </p>
             <div className="flex flex-wrap gap-2 pt-1">
               {dueCount > 0 ? (
-                <Button size="lg" onClick={() => void openDueReview()}>
-                  <BookOpen className="h-4 w-4" />
-                  Review {dueCount} due
+                <Button asChild size="lg">
+                  <Link href="/review">
+                    <BookOpen className="h-4 w-4" />
+                    Review {dueCount} due
+                  </Link>
                 </Button>
               ) : null}
               {primaryCta ? (

@@ -36,6 +36,7 @@ import {
 import { MarkdownMath } from "@/components/ui/markdown-math";
 import { cn } from "@/lib/utils/cn";
 import { fadeUp } from "@/lib/motion";
+import { exportNotesMarkdown, exportNotesPdf } from "@/lib/export/pack";
 import type { ApiResponse } from "@/types/api";
 import type { Note } from "@/types/database";
 
@@ -117,37 +118,11 @@ export function NotesPanel({ note }: NotesPanelProps) {
   }
 
   function exportMarkdown() {
-    const blob = new Blob(
-      [`# Summary\n\n${summary}\n\n# Notes\n\n${content}`],
-      { type: "text/markdown;charset=utf-8" }
-    );
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "studysync-notes.md";
-    a.click();
-    URL.revokeObjectURL(url);
+    exportNotesMarkdown("StudySync Notes", { summary, content });
   }
 
   function exportPdf() {
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) return;
-    printWindow.document.write(`
-      <html><head><title>StudySync Notes</title>
-      <style>
-        body{font-family:Georgia,serif;padding:40px;line-height:1.65;color:#111;max-width:720px;margin:0 auto}
-        h1,h2,h3{font-family:system-ui,sans-serif;line-height:1.25}
-        h1{font-size:1.75rem} h2{font-size:1.25rem;margin-top:1.5em}
-        ul{padding-left:1.25rem} li{margin:0.35em 0}
-        p{margin:0.75em 0}
-      </style>
-      </head><body>
-      <h1>Summary</h1><p>${escapeHtml(summary)}</p>
-      <h1>Notes</h1>${markdownToSimpleHtml(content)}
-      <script>window.onload=()=>{window.print()}</script>
-      </body></html>
-    `);
-    printWindow.document.close();
+    exportNotesPdf("StudySync Notes", { summary, content });
   }
 
   const dirty =
@@ -421,15 +396,3 @@ function htmlToMarkdownish(html: string) {
     .trim();
 }
 
-function markdownToSimpleHtml(md: string) {
-  return escapeHtml(md)
-    .replace(/^### (.+)$/gm, "<h3>$1</h3>")
-    .replace(/^## (.+)$/gm, "<h2>$1</h2>")
-    .replace(/^# (.+)$/gm, "<h1>$1</h1>")
-    .replace(/^\- (.+)$/gm, "<li>$1</li>")
-    .replace(/(<li>.*<\/li>\n?)+/g, (block) => `<ul>${block}</ul>`)
-    .replace(/\n\n/g, "</p><p>")
-    .replace(/^(?!<[hul])/gm, (line) =>
-      line.startsWith("<") ? line : `<p>${line}</p>`
-    );
-}

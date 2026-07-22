@@ -87,12 +87,20 @@ export default async function ProgressPage() {
   const attempts = attemptsRes.error ? [] : (attemptsRes.data ?? []);
   const activity = activityRes.error ? [] : (activityRes.data ?? []);
 
-  const weakTopics = new Map<string, number>();
+  const weakTopics = new Map<
+    string,
+    { study_id: string; title: string; misses: number }
+  >();
   for (const a of attempts) {
     const wrong = Array.isArray(a.wrong_quiz_ids) ? a.wrong_quiz_ids.length : 0;
     if (wrong <= 0) continue;
     const title = studyTitle.get(a.study_id) ?? "Study";
-    weakTopics.set(title, (weakTopics.get(title) ?? 0) + wrong);
+    const prev = weakTopics.get(a.study_id);
+    weakTopics.set(a.study_id, {
+      study_id: a.study_id,
+      title,
+      misses: (prev?.misses ?? 0) + wrong,
+    });
   }
 
   const payload: ProgressPayload = {
@@ -104,8 +112,7 @@ export default async function ProgressPage() {
     dueCount: dueCards.length,
     dueCards: dueCards.slice(0, 8),
     weakCards,
-    weakTopics: Array.from(weakTopics.entries())
-      .map(([title, misses]) => ({ title, misses }))
+    weakTopics: Array.from(weakTopics.values())
       .sort((a, b) => b.misses - a.misses)
       .slice(0, 8),
     recentAttempts: attempts.slice(0, 8).map((a) => ({

@@ -25,6 +25,7 @@ import { ChatPanel } from "@/components/study/chat-panel";
 import { PodcastPanel } from "@/components/study/podcast-panel";
 import { ProcessingView } from "@/components/study/processing-view";
 import { ShareInvitePanel } from "@/components/share/share-invite-panel";
+import { ExportPackMenu } from "@/components/study/export-pack-menu";
 import { useStudySessionStore } from "@/stores/study-session";
 import { resolveStudyFilePaths } from "@/lib/studies/files";
 import type { ApiResponse } from "@/types/api";
@@ -60,6 +61,14 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
   const [lifecycleBusy, setLifecycleBusy] = useState<"retry" | "delete" | null>(
     null
   );
+  const [examWrongIds, setExamWrongIds] = useState<string[] | null>(null);
+
+  const examMode = searchParams.get("exam") === "1";
+  const examMinutes = Math.min(
+    120,
+    Math.max(5, Number(searchParams.get("minutes") || 20) || 20)
+  );
+  const wantWrong = searchParams.get("wrong") === "1";
 
   useEffect(() => {
     setActiveStudyId(study.id);
@@ -71,6 +80,27 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
       setActiveTab(tab as StudyTab);
     }
   }, [searchParams, setActiveTab]);
+
+  useEffect(() => {
+    if (!wantWrong) {
+      setExamWrongIds(null);
+      return;
+    }
+    let cancelled = false;
+    void fetch(`/api/studies/${study.id}/quiz-attempt`)
+      .then((r) => r.json())
+      .then((json: ApiResponse<{ wrong_quiz_ids?: string[] } | null>) => {
+        if (cancelled || !json.success || !json.data) return;
+        const ids = Array.isArray(json.data.wrong_quiz_ids)
+          ? json.data.wrong_quiz_ids
+          : [];
+        setExamWrongIds(ids.length ? ids : null);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [study.id, wantWrong]);
 
   useEffect(() => {
     if (study.share_token) {
@@ -184,6 +214,7 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
             {kindLabel}
           </Badge>
           <div className="flex flex-wrap items-center gap-1">
+            <ExportPackMenu study={study} />
             {shareUrl ? (
               <>
                 <Button
@@ -288,6 +319,23 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
             type="button"
             size="sm"
             variant="outline"
+            onClick={() => {
+              const params = new URLSearchParams(searchParams.toString());
+              params.set("tab", "quiz");
+              params.set("exam", "1");
+              params.set("minutes", "20");
+              router.replace(`/study/${study.id}?${params.toString()}`, {
+                scroll: false,
+              });
+              setActiveTab("quiz");
+            }}
+          >
+            Exam mode
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
             onClick={() => setActiveTab("chat")}
           >
             <MessageCircle className="h-4 w-4" />
@@ -326,7 +374,13 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
               <FlashcardsPanel flashcards={study.flashcards} />
             ) : null}
             {activeTab === "quiz" ? (
-              <QuizPanel studyId={study.id} quizzes={study.quizzes} />
+              <QuizPanel
+                studyId={study.id}
+                quizzes={study.quizzes}
+                examMode={examMode}
+                examMinutes={examMinutes}
+                initialReviewIds={examWrongIds}
+              />
             ) : null}
             {activeTab === "mindmap" ? (
               <MindMapPanel mindMap={study.notes?.mind_map ?? null} />

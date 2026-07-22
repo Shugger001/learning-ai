@@ -28,7 +28,7 @@ export interface ProgressPayload {
     reps: number;
     study_title: string;
   }[];
-  weakTopics: { title: string; misses: number }[];
+  weakTopics: { study_id: string; title: string; misses: number }[];
   recentAttempts: {
     id: string;
     study_id: string;
@@ -119,7 +119,7 @@ export function ProgressClient({ data }: { data: ProgressPayload }) {
 
       <div className="flex flex-wrap gap-2">
         <Button asChild>
-          <Link href="/dashboard">Review due cards</Link>
+          <Link href="/review">Review today</Link>
         </Button>
         <Button asChild variant="outline">
           <Link href="/library">Browse library</Link>
@@ -164,13 +164,22 @@ export function ProgressClient({ data }: { data: ProgressPayload }) {
             <ul className="space-y-2">
               {data.weakTopics.map((t) => (
                 <li
-                  key={t.title}
-                  className="flex items-center justify-between border border-border/70 px-3 py-2.5 text-sm"
+                  key={t.study_id}
+                  className="flex items-center justify-between gap-3 border border-border/70 px-3 py-2.5 text-sm"
                 >
-                  <span className="font-medium">{t.title}</span>
-                  <span className="text-muted-foreground">
-                    {t.misses} miss{t.misses === 1 ? "" : "es"}
-                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{t.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {t.misses} miss{t.misses === 1 ? "" : "es"}
+                    </p>
+                  </div>
+                  <Button asChild size="sm" variant="outline">
+                    <Link
+                      href={`/study/${t.study_id}?tab=quiz&exam=1&minutes=20`}
+                    >
+                      Exam
+                    </Link>
+                  </Button>
                 </li>
               ))}
               {data.weakCards.slice(0, 4).map((card) => (
@@ -200,7 +209,7 @@ export function ProgressClient({ data }: { data: ProgressPayload }) {
             {data.recentAttempts.map((a) => (
               <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
                 <Link
-                  href={`/study/${a.study_id}?tab=quiz`}
+                  href={`/study/${a.study_id}?tab=quiz&exam=1&wrong=1&minutes=15`}
                   className="font-medium hover:underline"
                 >
                   {a.study_title}
