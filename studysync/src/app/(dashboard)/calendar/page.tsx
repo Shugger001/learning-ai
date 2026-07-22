@@ -29,7 +29,6 @@ export default async function CalendarPage() {
   const weekStart = startOfWeek(new Date());
   const weekEnd = addDays(weekStart, 6);
   const from = keyOf(weekStart);
-  const to = keyOf(weekEnd);
 
   const { data: studies } = await supabase
     .from("studies")
