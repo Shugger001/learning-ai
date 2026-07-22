@@ -18,6 +18,10 @@ interface FlashcardsPanelProps {
   onRated?: () => void;
   /** Filter deck to cards matching this query (mind map jump). */
   focusQuery?: string | null;
+  /** Report current card for study-room presence. */
+  onFocusCard?: (card: Flashcard | null) => void;
+  /** Jump to a peer's focused card id when set. */
+  followCardId?: string | null;
 }
 
 type SrsRating = "again" | "hard" | "good" | "easy";
@@ -29,6 +33,8 @@ export function FlashcardsPanel({
   compact = false,
   onRated,
   focusQuery = null,
+  onFocusCard,
+  followCardId = null,
 }: FlashcardsPanelProps) {
   const [cards, setCards] = useState(initial);
   const [dueOnly, setDueOnly] = useState(!compact && !focusQuery);
@@ -67,6 +73,24 @@ export function FlashcardsPanel({
     setFlipped(false);
     if (focusQuery) setDueOnly(false);
   }, [focusQuery]);
+
+  useEffect(() => {
+    if (!followCardId) return;
+    const idx = cards.findIndex((c) => c.id === followCardId);
+    if (idx >= 0) {
+      setDueOnly(false);
+      setIndex(idx);
+      setFlipped(false);
+    }
+  }, [followCardId, cards]);
+
+  useEffect(() => {
+    if (!onFocusCard) return;
+    const safe = Math.min(index, Math.max(0, queue.length - 1));
+    onFocusCard(queue[safe] ?? null);
+    // Intentionally omit queue identity; index + length cover focus changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index, queue.length, onFocusCard]);
 
   if (cards.length === 0) {
     return (

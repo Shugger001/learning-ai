@@ -143,6 +143,18 @@ export interface EmailPreferences {
   weekly_recap: boolean;
   timezone: string;
   last_weekly_sent_at: string | null;
+  unsubscribe_token?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StudyRoom {
+  id: string;
+  study_id: string;
+  host_id: string;
+  name: string;
+  join_code: string;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }

@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { Navbar } from "@/components/layout/navbar";
 import { StudyWorkspace } from "@/components/study/study-workspace";
 import { Button } from "@/components/ui/button";
@@ -10,9 +11,10 @@ import type { StudyWithMaterials } from "@/types/database";
 
 interface PageProps {
   params: { id: string };
+  searchParams?: { room?: string };
 }
 
-export default async function StudyPage({ params }: PageProps) {
+export default async function StudyPage({ params, searchParams }: PageProps) {
   const supabase = createClient();
   const {
     data: { user },
@@ -28,30 +30,60 @@ export default async function StudyPage({ params }: PageProps) {
     .eq("user_id", user.id)
     .single();
 
-  const { data: study } = await supabase
-    .from("studies")
-    .select("*")
-    .eq("id", params.id)
-    .eq("user_id", user.id)
-    .single();
+  let study =
+    (
+      await supabase
+        .from("studies")
+        .select("*")
+        .eq("id", params.id)
+        .eq("user_id", user.id)
+        .maybeSingle()
+    ).data ?? null;
+
+  // Room guests: allow read-only study access when room code matches this pack
+  const roomCode = searchParams?.room?.trim().toUpperCase();
+  if (!study && roomCode) {
+    try {
+      const admin = createAdminClient();
+      const { data: room } = await admin
+        .from("study_rooms")
+        .select("id, study_id, is_active")
+        .eq("join_code", roomCode)
+        .eq("study_id", params.id)
+        .eq("is_active", true)
+        .maybeSingle();
+      if (room) {
+        const { data: shared } = await admin
+          .from("studies")
+          .select("*")
+          .eq("id", params.id)
+          .maybeSingle();
+        study = shared;
+      }
+    } catch {
+      // admin/env missing — fall through to notFound
+    }
+  }
 
   if (!study) {
     notFound();
   }
 
+  const reader = study.user_id === user.id ? supabase : createAdminClient();
+
   const [{ data: flashcards }, { data: quizzes }, { data: notes }] =
     await Promise.all([
-      supabase
+      reader
         .from("flashcards")
         .select("*")
         .eq("study_id", params.id)
         .order("position", { ascending: true }),
-      supabase
+      reader
         .from("quizzes")
         .select("*")
         .eq("study_id", params.id)
         .order("position", { ascending: true }),
-      supabase.from("notes").select("*").eq("study_id", params.id).maybeSingle(),
+      reader.from("notes").select("*").eq("study_id", params.id).maybeSingle(),
     ]);
 
   const materials: StudyWithMaterials = {

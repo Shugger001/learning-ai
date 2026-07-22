@@ -2,6 +2,10 @@ import { createClient } from "@/lib/supabase/server";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { z } from "zod";
 
+function newUnsubToken() {
+  return crypto.randomUUID().replace(/-/g, "");
+}
+
 export async function GET() {
   const supabase = createClient();
   const {
@@ -22,6 +26,7 @@ export async function GET() {
         weekly_recap: false,
         timezone: "UTC",
         last_weekly_sent_at: null,
+        unsubscribe_token: null,
       });
     }
     return apiError(error.message, 500);
@@ -33,6 +38,7 @@ export async function GET() {
       weekly_recap: false,
       timezone: "UTC",
       last_weekly_sent_at: null,
+      unsubscribe_token: null,
     }
   );
 }
@@ -55,16 +61,25 @@ export async function PATCH(request: Request) {
     return apiError(parsed.error.issues[0]?.message ?? "Invalid input", 400);
   }
 
+  const { data: existing } = await supabase
+    .from("email_preferences")
+    .select("unsubscribe_token")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const row: Record<string, unknown> = {
+    user_id: user.id,
+    ...parsed.data,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (parsed.data.weekly_recap === true && !existing?.unsubscribe_token) {
+    row.unsubscribe_token = newUnsubToken();
+  }
+
   const { data, error } = await supabase
     .from("email_preferences")
-    .upsert(
-      {
-        user_id: user.id,
-        ...parsed.data,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "user_id" }
-    )
+    .upsert(row, { onConflict: "user_id" })
     .select("*")
     .single();
 
@@ -72,6 +87,12 @@ export async function PATCH(request: Request) {
     if (error.message.includes("email_preferences") || error.code === "PGRST205") {
       return apiError(
         "Email preferences need APPLY_CLASSES_EMAIL.sql — run it in Supabase SQL Editor.",
+        503
+      );
+    }
+    if (error.message.includes("unsubscribe_token")) {
+      return apiError(
+        "Unsubscribe tokens need APPLY_GRADEBOOK_ROOMS.sql — run it in Supabase SQL Editor.",
         503
       );
     }

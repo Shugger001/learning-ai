@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { apiError, apiSuccess } from "@/lib/api/response";
+import { parseDueAt } from "@/lib/classes/gradebook";
 import { z } from "zod";
 
 interface RouteParams {
@@ -26,7 +27,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     .object({
       study_id: z.string().uuid(),
       title: z.string().max(200).optional(),
-      due_at: z.string().datetime().optional().nullable(),
+      due_at: z.string().optional().nullable(),
     })
     .safeParse(body);
   if (!parsed.success) {
@@ -49,7 +50,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       class_id: params.id,
       study_id: study.id,
       title: parsed.data.title?.trim() || study.title,
-      due_at: parsed.data.due_at ?? null,
+      due_at: parseDueAt(parsed.data.due_at),
       created_by: user.id,
     })
     .select("*, studies(id, title, status, flashcard_count)")
@@ -77,6 +78,49 @@ export async function POST(request: Request, { params }: RouteParams) {
   }
 
   return apiSuccess(data, 201);
+}
+
+export async function PATCH(request: Request, { params }: RouteParams) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return apiError("Unauthorized", 401);
+
+  const { data: owned } = await supabase
+    .from("classes")
+    .select("id")
+    .eq("id", params.id)
+    .eq("owner_id", user.id)
+    .maybeSingle();
+  if (!owned) return apiError("Class not found", 404);
+
+  const body = await request.json().catch(() => null);
+  const parsed = z
+    .object({
+      id: z.string().uuid(),
+      due_at: z.string().optional().nullable(),
+      title: z.string().max(200).optional(),
+    })
+    .safeParse(body);
+  if (!parsed.success) {
+    return apiError(parsed.error.issues[0]?.message ?? "Invalid input", 400);
+  }
+
+  const patch: Record<string, unknown> = {};
+  if ("due_at" in parsed.data) patch.due_at = parseDueAt(parsed.data.due_at);
+  if (parsed.data.title !== undefined) patch.title = parsed.data.title.trim();
+
+  const { data, error } = await supabase
+    .from("class_assignments")
+    .update(patch)
+    .eq("id", parsed.data.id)
+    .eq("class_id", params.id)
+    .select("*, studies(id, title, status, flashcard_count)")
+    .single();
+
+  if (error) return apiError(error.message, 500);
+  return apiSuccess(data);
 }
 
 export async function DELETE(request: Request, { params }: RouteParams) {

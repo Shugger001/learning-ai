@@ -1,11 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  completionPercent,
+  gradeStatus,
+  type GradeStatus,
+} from "@/lib/classes/gradebook";
+import { cn } from "@/lib/utils/cn";
 import type { ApiResponse } from "@/types/api";
 import type {
   AssignmentProgress,
@@ -16,8 +22,36 @@ import type {
 } from "@/types/database";
 
 type AssignmentRow = ClassAssignment & {
-  studies?: { id: string; title: string; status: string; flashcard_count: number } | null;
+  studies?: {
+    id: string;
+    title: string;
+    status: string;
+    flashcard_count: number;
+  } | null;
 };
+
+const STATUS_LABEL: Record<GradeStatus, string> = {
+  done: "Done",
+  stuck: "Stuck",
+  overdue: "Overdue",
+  in_progress: "In progress",
+  not_started: "Not started",
+  pending: "Pending",
+};
+
+function statusClass(status: GradeStatus) {
+  switch (status) {
+    case "done":
+      return "text-emerald-700";
+    case "stuck":
+    case "overdue":
+      return "text-destructive";
+    case "in_progress":
+      return "text-amber-700";
+    default:
+      return "text-muted-foreground";
+  }
+}
 
 export function ClassDetailClient() {
   const params = useParams<{ id: string }>();
@@ -32,11 +66,12 @@ export function ClassDetailClient() {
   const [studies, setStudies] = useState<Study[]>([]);
   const [email, setEmail] = useState("");
   const [studyId, setStudyId] = useState("");
+  const [dueAt, setDueAt] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  async function load() {
+  const load = useCallback(async () => {
     const res = await fetch(`/api/classes/${classId}`);
     const json = (await res.json()) as ApiResponse<{
       class: ClassRoom;
@@ -54,7 +89,7 @@ export function ClassDetailClient() {
     setAssignments(json.data.assignments);
     setProgress(json.data.progress);
     setIsOwner(json.data.isOwner);
-  }
+  }, [classId]);
 
   useEffect(() => {
     void load();
@@ -66,7 +101,7 @@ export function ClassDetailClient() {
         }
       })
       .catch(() => undefined);
-  }, [classId]);
+  }, [load]);
 
   const students = useMemo(
     () => members.filter((m) => m.role === "student"),
@@ -80,6 +115,52 @@ export function ClassDetailClient() {
     );
   }
 
+  function cell(assignment: AssignmentRow, member: ClassMember) {
+    const p = progressFor(assignment.id, member.user_id);
+    const count = assignment.studies?.flashcard_count ?? 0;
+    const reviewed = p?.cards_reviewed ?? 0;
+    const pct = completionPercent(reviewed, count);
+    const status = gradeStatus({
+      acceptedAt: member.accepted_at,
+      cardsReviewed: reviewed,
+      flashcardCount: count,
+      completedAt: p?.completed_at ?? null,
+      lastReviewedAt: p?.last_reviewed_at ?? null,
+      dueAt: assignment.due_at,
+    });
+    return { pct, status, reviewed };
+  }
+
+  const gradebookSummary = useMemo(() => {
+    let done = 0;
+    let stuck = 0;
+    let overdue = 0;
+    let total = 0;
+    for (const a of assignments) {
+      for (const m of students) {
+        total += 1;
+        const p = m.user_id
+          ? progress.find(
+              (row) =>
+                row.assignment_id === a.id && row.user_id === m.user_id
+            )
+          : null;
+        const status = gradeStatus({
+          acceptedAt: m.accepted_at,
+          cardsReviewed: p?.cards_reviewed ?? 0,
+          flashcardCount: a.studies?.flashcard_count ?? 0,
+          completedAt: p?.completed_at ?? null,
+          lastReviewedAt: p?.last_reviewed_at ?? null,
+          dueAt: a.due_at,
+        });
+        if (status === "done") done += 1;
+        if (status === "stuck") stuck += 1;
+        if (status === "overdue") overdue += 1;
+      }
+    }
+    return { done, stuck, overdue, total };
+  }, [assignments, students, progress]);
+
   async function invite() {
     if (!email.trim()) return;
     setBusy(true);
@@ -90,7 +171,9 @@ export function ClassDetailClient() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: email.trim() }),
     });
-    const json = (await res.json()) as ApiResponse<ClassMember & { invite_url?: string }>;
+    const json = (await res.json()) as ApiResponse<
+      ClassMember & { invite_url?: string }
+    >;
     setBusy(false);
     if (!json.success) {
       setError(json.error);
@@ -111,7 +194,10 @@ export function ClassDetailClient() {
     const res = await fetch(`/api/classes/${classId}/assignments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ study_id: studyId }),
+      body: JSON.stringify({
+        study_id: studyId,
+        due_at: dueAt || null,
+      }),
     });
     const json = (await res.json()) as ApiResponse<AssignmentRow>;
     setBusy(false);
@@ -120,6 +206,21 @@ export function ClassDetailClient() {
       return;
     }
     setStudyId("");
+    setDueAt("");
+    await load();
+  }
+
+  async function updateDue(assignmentId: string, nextDue: string) {
+    const res = await fetch(`/api/classes/${classId}/assignments`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: assignmentId, due_at: nextDue || null }),
+    });
+    const json = (await res.json()) as ApiResponse<AssignmentRow>;
+    if (!json.success) {
+      setError(json.error);
+      return;
+    }
     await load();
   }
 
@@ -165,7 +266,10 @@ export function ClassDetailClient() {
               {classroom.name}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Join code <span className="font-medium text-foreground">{classroom.join_code}</span>
+              Join code{" "}
+              <span className="font-medium text-foreground">
+                {classroom.join_code}
+              </span>
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -210,7 +314,11 @@ export function ClassDetailClient() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="student@school.edu"
               />
-              <Button type="button" disabled={busy || !email.trim()} onClick={() => void invite()}>
+              <Button
+                type="button"
+                disabled={busy || !email.trim()}
+                onClick={() => void invite()}
+              >
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 Invite
               </Button>
@@ -231,12 +339,102 @@ export function ClassDetailClient() {
                   </option>
                 ))}
               </select>
-              <Button type="button" disabled={busy || !studyId} onClick={() => void assign()}>
+              <Input
+                type="date"
+                className="w-[11rem]"
+                value={dueAt}
+                onChange={(e) => setDueAt(e.target.value)}
+                aria-label="Due date"
+              />
+              <Button
+                type="button"
+                disabled={busy || !studyId}
+                onClick={() => void assign()}
+              >
                 Assign
               </Button>
             </div>
           </div>
         </div>
+      ) : null}
+
+      {isOwner && assignments.length > 0 && students.length > 0 ? (
+        <section className="space-y-3">
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <h2 className="font-display text-xl font-semibold tracking-tight">
+                Gradebook
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {gradebookSummary.done} done · {gradebookSummary.stuck} stuck ·{" "}
+                {gradebookSummary.overdue} overdue
+                {gradebookSummary.total
+                  ? ` · ${Math.round(
+                      (gradebookSummary.done / gradebookSummary.total) * 100
+                    )}% complete`
+                  : ""}
+              </p>
+            </div>
+          </div>
+          <div className="overflow-x-auto border border-border/70">
+            <table className="min-w-full text-left text-sm">
+              <thead className="border-b border-border/60 bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Student</th>
+                  {assignments.map((a) => (
+                    <th key={a.id} className="px-3 py-2 font-medium">
+                      <div className="max-w-[9rem] truncate">
+                        {a.title || a.studies?.title || "Pack"}
+                      </div>
+                      <div className="mt-1 normal-case tracking-normal">
+                        <input
+                          type="date"
+                          className="h-7 w-[9rem] border border-input bg-background px-1 text-[11px]"
+                          value={
+                            a.due_at ? a.due_at.slice(0, 10) : ""
+                          }
+                          onChange={(e) =>
+                            void updateDue(a.id, e.target.value)
+                          }
+                          aria-label={`Due date for ${a.title || "assignment"}`}
+                        />
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/50">
+                {students.map((m) => (
+                  <tr key={m.id}>
+                    <td className="px-3 py-2">
+                      <div className="font-medium">{m.email}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {m.accepted_at ? "joined" : "pending"}
+                      </div>
+                    </td>
+                    {assignments.map((a) => {
+                      const { pct, status } = cell(a, m);
+                      return (
+                        <td key={a.id} className="px-3 py-2 align-top">
+                          <div className="font-medium">{pct}%</div>
+                          <div className={cn("text-xs", statusClass(status))}>
+                            {STATUS_LABEL[status]}
+                          </div>
+                          <div className="mt-1 h-1.5 w-full max-w-[6rem] bg-muted">
+                            <div
+                              className="h-full bg-primary"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
       ) : null}
 
       <section className="space-y-3">
@@ -285,13 +483,14 @@ export function ClassDetailClient() {
           <ul className="space-y-4">
             {assignments.map((a) => {
               const title = a.title || a.studies?.title || "Study pack";
+              const count = a.studies?.flashcard_count ?? 0;
               return (
                 <li key={a.id} className="border border-border/70 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <p className="font-medium">{title}</p>
                       <p className="text-xs text-muted-foreground">
-                        {a.studies?.flashcard_count ?? 0} cards
+                        {count} cards
                         {a.due_at
                           ? ` · due ${new Date(a.due_at).toLocaleDateString()}`
                           : ""}
@@ -317,18 +516,13 @@ export function ClassDetailClient() {
                   {isOwner ? (
                     <ul className="mt-3 space-y-1 border-t border-border/60 pt-3 text-xs text-muted-foreground">
                       {students.map((m) => {
-                        const p = progressFor(a.id, m.user_id);
+                        const { pct, status, reviewed } = cell(a, m);
                         return (
                           <li key={m.id} className="flex justify-between gap-2">
                             <span>{m.email}</span>
-                            <span>
-                              {p?.completed_at
-                                ? "Completed"
-                                : p
-                                  ? `${p.cards_reviewed} cards reviewed`
-                                  : m.accepted_at
-                                    ? "Not started"
-                                    : "Invite pending"}
+                            <span className={statusClass(status)}>
+                              {STATUS_LABEL[status]} · {pct}% ({reviewed}/
+                              {Math.max(1, count || 10)})
                             </span>
                           </li>
                         );

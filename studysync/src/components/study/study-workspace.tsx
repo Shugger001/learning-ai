@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Link2,
@@ -13,6 +14,7 @@ import {
   ListChecks,
   RotateCcw,
   Trash2,
+  Users,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -27,9 +29,15 @@ import { ProcessingView } from "@/components/study/processing-view";
 import { ShareInvitePanel } from "@/components/share/share-invite-panel";
 import { ExportPackMenu } from "@/components/study/export-pack-menu";
 import { useStudySessionStore } from "@/stores/study-session";
+import { useStudyRoomPresence } from "@/hooks/use-study-room-presence";
 import { resolveStudyFilePaths } from "@/lib/studies/files";
 import type { ApiResponse } from "@/types/api";
-import type { Study, StudyWithMaterials } from "@/types/database";
+import type {
+  Flashcard,
+  Study,
+  StudyRoom,
+  StudyWithMaterials,
+} from "@/types/database";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
@@ -63,13 +71,54 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
   );
   const [examWrongIds, setExamWrongIds] = useState<string[] | null>(null);
   const [cardFocusQuery, setCardFocusQuery] = useState<string | null>(null);
+  const [room, setRoom] = useState<StudyRoom | null>(null);
+  const [focusedCard, setFocusedCard] = useState<Flashcard | null>(null);
+  const [followCardId, setFollowCardId] = useState<string | null>(null);
 
   const examMode = searchParams.get("exam") === "1";
+  const roomCode = searchParams.get("room");
   const examMinutes = Math.min(
     120,
     Math.max(5, Number(searchParams.get("minutes") || 20) || 20)
   );
   const wantWrong = searchParams.get("wrong") === "1";
+
+  const onFocusCard = useCallback((card: Flashcard | null) => {
+    setFocusedCard(card);
+  }, []);
+
+  const { peers, selfId } = useStudyRoomPresence({
+    roomId: room?.id,
+    enabled: Boolean(room?.id),
+    tab: activeTab,
+    focusedCardId: focusedCard?.id ?? null,
+    focusedQuestion: focusedCard?.question ?? null,
+  });
+
+  useEffect(() => {
+    if (!roomCode) {
+      setRoom(null);
+      return;
+    }
+    let cancelled = false;
+    void fetch(`/api/rooms/${encodeURIComponent(roomCode)}`)
+      .then((r) => r.json())
+      .then(
+        (
+          json: ApiResponse<
+            StudyRoom & { studies?: { id: string } | null }
+          >
+        ) => {
+          if (cancelled || !json.success) return;
+          if (json.data.study_id !== study.id) return;
+          setRoom(json.data);
+        }
+      )
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [roomCode, study.id]);
 
   useEffect(() => {
     setActiveStudyId(study.id);
@@ -298,6 +347,51 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
           </a>
         ) : null}
 
+        {room ? (
+          <div className="mt-3 space-y-2 border border-border/70 bg-card/40 px-3 py-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+              <span className="inline-flex items-center gap-2 font-medium">
+                <Users className="h-4 w-4 text-primary" />
+                Live room {room.join_code}
+              </span>
+              <Button asChild size="sm" variant="ghost">
+                <Link href={`/rooms/${room.join_code}`}>Room lobby</Link>
+              </Button>
+            </div>
+            <ul className="flex flex-wrap gap-2">
+              {peers.map((p) => (
+                <li key={p.id}>
+                  <button
+                    type="button"
+                    className="border border-border/70 px-2 py-1 text-left text-xs"
+                    style={{ borderLeftColor: p.color, borderLeftWidth: 3 }}
+                    onClick={() => {
+                      if (p.focusedCardId && p.id !== selfId) {
+                        setFollowCardId(p.focusedCardId);
+                        setActiveTab("flashcards");
+                      }
+                    }}
+                    title={
+                      p.focusedQuestion
+                        ? `${p.name}: ${p.focusedQuestion}`
+                        : p.name
+                    }
+                  >
+                    {p.name}
+                    {p.id === selfId ? " (you)" : ""}
+                    <span className="ml-1 text-muted-foreground">
+                      · {p.tab}
+                      {p.focusedQuestion
+                        ? ` · ${p.focusedQuestion.slice(0, 28)}`
+                        : ""}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
         <div className="flex flex-wrap gap-2 pt-1">
           <Button
             type="button"
@@ -342,6 +436,35 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
             <MessageCircle className="h-4 w-4" />
             Ask chat
           </Button>
+          {!room ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                void fetch("/api/rooms", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ study_id: study.id }),
+                })
+                  .then((r) => r.json())
+                  .then((json: ApiResponse<StudyRoom>) => {
+                    if (!json.success) return;
+                    const params = new URLSearchParams(searchParams.toString());
+                    params.set("room", json.data.join_code);
+                    params.set("tab", "flashcards");
+                    router.replace(`/study/${study.id}?${params.toString()}`, {
+                      scroll: false,
+                    });
+                    setRoom(json.data);
+                    setActiveTab("flashcards");
+                  });
+              }}
+            >
+              <Users className="h-4 w-4" />
+              Start room
+            </Button>
+          ) : null}
         </div>
       </div>
 
@@ -375,6 +498,8 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
               <FlashcardsPanel
                 flashcards={study.flashcards}
                 focusQuery={cardFocusQuery}
+                onFocusCard={onFocusCard}
+                followCardId={followCardId}
               />
             ) : null}
             {activeTab === "quiz" ? (

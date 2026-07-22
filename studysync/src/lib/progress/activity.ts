@@ -88,6 +88,14 @@ export async function recordStudyActivity(
 
   // Bump progress only for assignments that include this study
   if (cards > 0 && delta.studyId) {
+    const { assignmentGoal } = await import("@/lib/classes/gradebook");
+    const { data: studyMeta } = await admin
+      .from("studies")
+      .select("flashcard_count")
+      .eq("id", delta.studyId)
+      .maybeSingle();
+    const goal = assignmentGoal(studyMeta?.flashcard_count);
+
     const { data: assignments } = await admin
       .from("class_assignments")
       .select("id")
@@ -95,18 +103,22 @@ export async function recordStudyActivity(
     for (const a of assignments ?? []) {
       const { data: existingProg } = await admin
         .from("assignment_progress")
-        .select("id, cards_reviewed")
+        .select("id, cards_reviewed, completed_at")
         .eq("assignment_id", a.id)
         .eq("user_id", userId)
         .maybeSingle();
       if (existingProg) {
         const nextCount = (existingProg.cards_reviewed ?? 0) + cards;
+        const done =
+          Boolean(existingProg.completed_at) || nextCount >= goal;
         await admin
           .from("assignment_progress")
           .update({
             cards_reviewed: nextCount,
             last_reviewed_at: new Date().toISOString(),
-            completed_at: nextCount >= 10 ? new Date().toISOString() : null,
+            completed_at: done
+              ? existingProg.completed_at ?? new Date().toISOString()
+              : null,
           })
           .eq("id", existingProg.id);
       } else {
@@ -115,7 +127,7 @@ export async function recordStudyActivity(
           user_id: userId,
           cards_reviewed: cards,
           last_reviewed_at: new Date().toISOString(),
-          completed_at: cards >= 10 ? new Date().toISOString() : null,
+          completed_at: cards >= goal ? new Date().toISOString() : null,
         });
       }
     }

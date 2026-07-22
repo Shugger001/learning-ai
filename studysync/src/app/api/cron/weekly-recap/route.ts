@@ -27,7 +27,7 @@ export async function GET(request: Request) {
 
   const { data: prefs, error } = await admin
     .from("email_preferences")
-    .select("user_id")
+    .select("user_id, unsubscribe_token")
     .eq("weekly_recap", true);
 
   if (error) {
@@ -42,12 +42,19 @@ export async function GET(request: Request) {
   for (const row of prefs ?? []) {
     const digest = await buildDigestForUser(row.user_id);
     if (!digest) continue;
+    const unsubUrl = digest.unsubscribeToken
+      ? `${appUrl}/unsubscribe?token=${encodeURIComponent(digest.unsubscribeToken)}`
+      : `${appUrl}/progress`;
     try {
       await resend.emails.send({
         from: emailFrom(),
         to: digest.email,
         subject: `StudySync recap · ${digest.dueCount} due · ${digest.streak}d streak`,
         html: renderDigestHtml(digest, appUrl),
+        headers: {
+          "List-Unsubscribe": `<${unsubUrl}>`,
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
       });
       await admin
         .from("email_preferences")
