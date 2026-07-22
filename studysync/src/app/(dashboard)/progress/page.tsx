@@ -4,6 +4,7 @@ import {
   type ProgressPayload,
 } from "@/components/progress/progress-client";
 import { BADGE_CATALOG, levelFromXp, xpToNextLevel } from "@/lib/progress/xp";
+import { buildDeckMastery } from "@/lib/progress/mastery";
 
 export default async function ProgressPage() {
   const supabase = createClient();
@@ -21,6 +22,7 @@ export default async function ProgressPage() {
     activityRes,
     hardCardsRes,
     achievementsRes,
+    masteryCardsRes,
   ] = await Promise.all([
     supabase
       .from("profiles")
@@ -68,6 +70,14 @@ export default async function ProgressPage() {
       .select("badge_key, unlocked_at")
       .eq("user_id", user!.id)
       .order("unlocked_at", { ascending: false }),
+    supabase
+      .from("flashcards")
+      .select(
+        "study_id, ease, reps, studies!inner(user_id, title, status)"
+      )
+      .eq("studies.user_id", user!.id)
+      .eq("studies.status", "complete")
+      .limit(2000),
   ]);
 
   const studies = studiesRes.data ?? [];
@@ -102,6 +112,20 @@ export default async function ProgressPage() {
   const achievementRows = achievementsRes.error
     ? []
     : (achievementsRes.data ?? []);
+
+  const masteryRows = (masteryCardsRes.data ?? []).map((c) => {
+    const nested = c.studies as unknown as
+      | { title?: string }
+      | { title?: string }[]
+      | null;
+    const study = Array.isArray(nested) ? nested[0] : nested;
+    return {
+      study_id: c.study_id,
+      title: study?.title ?? studyTitle.get(c.study_id) ?? "Study",
+      ease: Number(c.ease ?? 2.5),
+      reps: Number(c.reps ?? 0),
+    };
+  });
 
   const weakTopics = new Map<
     string,
@@ -159,6 +183,7 @@ export default async function ProgressPage() {
     })),
     activity,
     studyCount: studies.length,
+    mastery: buildDeckMastery(masteryRows),
   };
 
   return <ProgressClient data={payload} />;

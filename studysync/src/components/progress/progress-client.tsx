@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Flame, Layers, ListChecks, Target, Trophy } from "lucide-react";
+import { Flame, Layers, ListChecks, Loader2, Target, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { fadeUp, staggerContainer, staggerItem } from "@/lib/motion";
+import { heatColor } from "@/lib/progress/mastery";
+import { cn } from "@/lib/utils/cn";
 import type { ApiResponse } from "@/types/api";
-import type { EmailPreferences } from "@/types/database";
+import type { EmailPreferences, SpacedEpisode } from "@/types/database";
 
 export interface ProgressPayload {
   streak: {
@@ -56,15 +58,29 @@ export interface ProgressPayload {
     quizzes_taken: number;
   }[];
   studyCount: number;
+  mastery: {
+    studyId: string;
+    title: string;
+    cardCount: number;
+    mastered: number;
+    struggling: number;
+    avgEase: number;
+    avgReps: number;
+    score: number;
+  }[];
 }
 
 export function ProgressClient({ data }: { data: ProgressPayload }) {
   const [weeklyRecap, setWeeklyRecap] = useState(false);
   const [coachDigest, setCoachDigest] = useState(false);
   const [coachEmail, setCoachEmail] = useState("");
+  const [assignmentReminders, setAssignmentReminders] = useState(true);
   const [prefMessage, setPrefMessage] = useState<string | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [shareMessage, setShareMessage] = useState<string | null>(null);
+  const [episode, setEpisode] = useState<SpacedEpisode | null>(null);
+  const [drillBusy, setDrillBusy] = useState(false);
+  const [drillMessage, setDrillMessage] = useState<string | null>(null);
 
   useEffect(() => {
     void fetch("/api/settings/email-preferences")
@@ -74,6 +90,9 @@ export function ProgressClient({ data }: { data: ProgressPayload }) {
           setWeeklyRecap(Boolean(json.data.weekly_recap));
           setCoachDigest(Boolean(json.data.coach_digest));
           setCoachEmail(json.data.coach_email ?? "");
+          setAssignmentReminders(
+            json.data.assignment_reminders !== false
+          );
         }
       })
       .catch(() => undefined);
@@ -83,6 +102,12 @@ export function ProgressClient({ data }: { data: ProgressPayload }) {
         if (json.success && json.data.url) {
           setShareUrl(`${window.location.origin}${json.data.url}`);
         }
+      })
+      .catch(() => undefined);
+    void fetch("/api/spaced-podcast")
+      .then((r) => r.json())
+      .then((json: ApiResponse<SpacedEpisode | null>) => {
+        if (json.success && json.data) setEpisode(json.data);
       })
       .catch(() => undefined);
   }, []);
@@ -149,6 +174,43 @@ export function ProgressClient({ data }: { data: ProgressPayload }) {
     await fetch("/api/progress/share", { method: "DELETE" });
     setShareUrl(null);
     setShareMessage("Snapshot link disabled");
+  }
+
+  async function toggleReminders(next: boolean) {
+    setAssignmentReminders(next);
+    setPrefMessage(null);
+    const res = await fetch("/api/settings/email-preferences", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ assignment_reminders: next }),
+    });
+    const json = (await res.json()) as ApiResponse<EmailPreferences>;
+    if (!json.success) {
+      setAssignmentReminders(!next);
+      setPrefMessage(json.error);
+      return;
+    }
+    setPrefMessage(
+      next ? "Assignment due reminders on" : "Assignment due reminders off"
+    );
+  }
+
+  async function generateDrill() {
+    setDrillBusy(true);
+    setDrillMessage(null);
+    const res = await fetch("/api/spaced-podcast", { method: "POST" });
+    const json = (await res.json()) as ApiResponse<SpacedEpisode>;
+    setDrillBusy(false);
+    if (!json.success) {
+      setDrillMessage(json.error);
+      return;
+    }
+    setEpisode(json.data);
+    setDrillMessage(
+      json.data.audio_url
+        ? "Today’s spaced drill is ready"
+        : "Script ready — add OPENAI_API_KEY for audio"
+    );
   }
 
   const cardsThisWeek = data.activity
@@ -257,6 +319,88 @@ export function ProgressClient({ data }: { data: ProgressPayload }) {
         </p>
       )}
 
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h2 className="font-display text-xl font-semibold tracking-tight">
+              Mastery map
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Deck strength from ease × reps — cooler green is stronger.
+            </p>
+          </div>
+        </div>
+        {data.mastery.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Complete a study to see deck heat.
+          </p>
+        ) : (
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {data.mastery.map((m) => (
+              <li key={m.studyId}>
+                <Link
+                  href={`/study/${m.studyId}`}
+                  className="block border border-border/70 p-3 transition hover:border-primary/40"
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={cn(
+                        "h-12 w-12 shrink-0",
+                        heatColor(m.score)
+                      )}
+                      aria-hidden
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{m.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {m.score}% · {m.mastered}/{m.cardCount} mastered
+                        {m.struggling
+                          ? ` · ${m.struggling} weak`
+                          : ""}
+                      </p>
+                    </div>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="space-y-3 border border-border/70 bg-card/40 p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-medium">Spaced audio drill</h2>
+            <p className="text-xs text-muted-foreground">
+              Short podcast from today’s due and weak cards.
+            </p>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            disabled={drillBusy}
+            onClick={() => void generateDrill()}
+          >
+            {drillBusy ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : null}
+            {episode?.status === "complete" ? "Refresh drill" : "Generate drill"}
+          </Button>
+        </div>
+        {drillMessage ? (
+          <p className="text-xs text-muted-foreground" role="status">
+            {drillMessage}
+          </p>
+        ) : null}
+        {episode?.audio_url ? (
+          <audio controls src={episode.audio_url} className="w-full" />
+        ) : episode?.script ? (
+          <p className="max-h-32 overflow-y-auto text-xs text-muted-foreground whitespace-pre-wrap">
+            {episode.script}
+          </p>
+        ) : null}
+      </section>
+
       <div className="flex flex-wrap gap-2">
         <Button asChild>
           <Link href="/review">Review today</Link>
@@ -318,6 +462,23 @@ export function ProgressClient({ data }: { data: ProgressPayload }) {
           onClick={() => void toggleRecap(!weeklyRecap)}
         >
           {weeklyRecap ? "On" : "Off"}
+        </Button>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 border border-border/70 bg-card/40 px-4 py-3">
+        <div>
+          <p className="text-sm font-medium">Assignment due reminders</p>
+          <p className="text-xs text-muted-foreground">
+            Email the day before a class pack is due.
+          </p>
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          variant={assignmentReminders ? "default" : "outline"}
+          onClick={() => void toggleReminders(!assignmentReminders)}
+        >
+          {assignmentReminders ? "On" : "Off"}
         </Button>
       </div>
 

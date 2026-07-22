@@ -15,6 +15,8 @@ const defaults = {
   coach_email: null as string | null,
   free_minutes: 25,
   last_coach_sent_at: null as string | null,
+  assignment_reminders: true,
+  last_due_reminder_at: null as string | null,
 };
 
 export async function GET() {
@@ -55,6 +57,7 @@ export async function PATCH(request: Request) {
       coach_digest: z.boolean().optional(),
       coach_email: z.string().email().nullable().optional(),
       free_minutes: z.number().int().min(10).max(120).optional(),
+      assignment_reminders: z.boolean().optional(),
     })
     .safeParse(body);
   if (!parsed.success) {
@@ -74,7 +77,9 @@ export async function PATCH(request: Request) {
   };
 
   if (
-    (parsed.data.weekly_recap === true || parsed.data.coach_digest === true) &&
+    (parsed.data.weekly_recap === true ||
+      parsed.data.coach_digest === true ||
+      parsed.data.assignment_reminders === true) &&
     !existing?.unsubscribe_token
   ) {
     row.unsubscribe_token = newUnsubToken();
@@ -95,10 +100,11 @@ export async function PATCH(request: Request) {
     }
     if (
       error.message.includes("coach_") ||
-      error.message.includes("free_minutes")
+      error.message.includes("free_minutes") ||
+      error.message.includes("assignment_reminders")
     ) {
       return apiError(
-        "Coach digest / free time need APPLY_GOALS_BATTLES_DIGEST.sql — run it in Supabase SQL Editor.",
+        "Email prefs need APPLY_GOALS_BATTLES_DIGEST.sql / APPLY_PODCAST_ANNOUNCE_MASTERY.sql — run in Supabase SQL Editor.",
         503
       );
     }

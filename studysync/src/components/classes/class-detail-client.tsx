@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils/cn";
 import type { ApiResponse } from "@/types/api";
 import type {
   AssignmentProgress,
+  ClassAnnouncement,
   ClassAssignment,
   ClassMember,
   ClassRoom,
@@ -67,6 +68,8 @@ export function ClassDetailClient() {
   const [email, setEmail] = useState("");
   const [studyId, setStudyId] = useState("");
   const [dueAt, setDueAt] = useState("");
+  const [announceBody, setAnnounceBody] = useState("");
+  const [announcements, setAnnouncements] = useState<ClassAnnouncement[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -90,6 +93,10 @@ export function ClassDetailClient() {
     setAssignments(json.data.assignments);
     setProgress(json.data.progress);
     setIsOwner(json.data.isOwner);
+
+    const ann = await fetch(`/api/classes/${classId}/announcements`);
+    const annJson = (await ann.json()) as ApiResponse<ClassAnnouncement[]>;
+    if (annJson.success) setAnnouncements(annJson.data);
   }, [classId]);
 
   useEffect(() => {
@@ -211,6 +218,40 @@ export function ClassDetailClient() {
     await load();
   }
 
+  async function postAnnouncement() {
+    if (!announceBody.trim()) return;
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    const res = await fetch(`/api/classes/${classId}/announcements`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ body: announceBody.trim(), notify: true }),
+    });
+    const json = (await res.json()) as ApiResponse<
+      ClassAnnouncement & { emailed?: number }
+    >;
+    setBusy(false);
+    if (!json.success) {
+      setError(json.error);
+      return;
+    }
+    setAnnounceBody("");
+    setMessage(
+      json.data.emailed
+        ? `Posted · emailed ${json.data.emailed} student${json.data.emailed === 1 ? "" : "s"}`
+        : "Announcement posted"
+    );
+    await load();
+  }
+
+  async function removeAnnouncement(id: string) {
+    await fetch(`/api/classes/${classId}/announcements?id=${id}`, {
+      method: "DELETE",
+    });
+    await load();
+  }
+
   async function updateDue(assignmentId: string, nextDue: string) {
     const res = await fetch(`/api/classes/${classId}/assignments`, {
       method: "PATCH",
@@ -329,6 +370,62 @@ export function ClassDetailClient() {
           {message}
         </p>
       ) : null}
+
+      <section className="space-y-3">
+        <h2 className="font-display text-xl font-semibold tracking-tight">
+          Announcements
+        </h2>
+        {isOwner ? (
+          <div className="space-y-2 border border-border/70 bg-card/40 p-4">
+            <textarea
+              className="min-h-[4.5rem] w-full border border-input bg-background px-3 py-2 text-sm"
+              value={announceBody}
+              onChange={(e) => setAnnounceBody(e.target.value)}
+              placeholder="Due reminder, exam tip, or class note…"
+              maxLength={2000}
+            />
+            <Button
+              type="button"
+              size="sm"
+              disabled={busy || !announceBody.trim()}
+              onClick={() => void postAnnouncement()}
+            >
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Post & email class
+            </Button>
+          </div>
+        ) : null}
+        {announcements.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No announcements yet.</p>
+        ) : (
+          <ul className="space-y-2">
+            {announcements.map((a) => (
+              <li
+                key={a.id}
+                className="flex flex-wrap items-start justify-between gap-2 border border-border/70 px-4 py-3 text-sm"
+              >
+                <div>
+                  <p className="whitespace-pre-wrap">{a.body}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {new Date(a.created_at).toLocaleString()}
+                  </p>
+                </div>
+                {isOwner ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="text-destructive"
+                    onClick={() => void removeAnnouncement(a.id)}
+                  >
+                    Remove
+                  </Button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       {isOwner ? (
         <div className="grid gap-4 lg:grid-cols-2">

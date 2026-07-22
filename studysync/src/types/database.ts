@@ -188,6 +188,30 @@ export interface EmailPreferences {
   coach_email?: string | null;
   free_minutes?: number;
   last_coach_sent_at?: string | null;
+  assignment_reminders?: boolean;
+  last_due_reminder_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ClassAnnouncement {
+  id: string;
+  class_id: string;
+  author_id: string;
+  body: string;
+  created_at: string;
+}
+
+export interface SpacedEpisode {
+  id: string;
+  user_id: string;
+  episode_date: string;
+  study_id: string | null;
+  card_ids: string[];
+  script: string | null;
+  audio_url: string | null;
+  status: "pending" | "processing" | "complete" | "error";
+  error_message: string | null;
   created_at: string;
   updated_at: string;
 }
