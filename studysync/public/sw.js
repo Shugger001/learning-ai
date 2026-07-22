@@ -1,6 +1,14 @@
 /* StudySync service worker — app shell + offline due-card queue sync */
-const CACHE = "studysync-shell-v1";
-const SHELL = ["/", "/dashboard", "/review", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png"];
+const CACHE = "studysync-shell-v2";
+const SHELL = [
+  "/",
+  "/dashboard",
+  "/review",
+  "/review/widget",
+  "/manifest.webmanifest",
+  "/icons/icon-192.png",
+  "/icons/icon-512.png",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -41,7 +49,12 @@ self.addEventListener("fetch", (event) => {
 
   if (req.mode === "navigate") {
     event.respondWith(
-      fetch(req).catch(() => caches.match("/review").then((r) => r || caches.match("/")))
+      fetch(req).catch(() =>
+        caches
+          .match("/review/widget")
+          .then((r) => r || caches.match("/review"))
+          .then((r) => r || caches.match("/"))
+      )
     );
     return;
   }

@@ -5,6 +5,63 @@ import { chatMessageSchema } from "@/lib/validations/study";
 import { streamChatAboutStudy } from "@/lib/ai/generate";
 import { FREE_LIMITS, ensureUsagePeriod, isPro } from "@/lib/billing/limits";
 
+async function buildWeakContext(
+  studyId: string,
+  userId: string
+): Promise<string> {
+  const supabase = createClient();
+  const [{ data: weakCards }, { data: attempts }] = await Promise.all([
+    supabase
+      .from("flashcards")
+      .select("question, answer, ease, difficulty")
+      .eq("study_id", studyId)
+      .lt("ease", 2.2)
+      .order("ease", { ascending: true })
+      .limit(8),
+    supabase
+      .from("quiz_attempts")
+      .select("wrong_quiz_ids")
+      .eq("user_id", userId)
+      .eq("study_id", studyId)
+      .order("created_at", { ascending: false })
+      .limit(10),
+  ]);
+
+  const lines: string[] = [];
+  if (weakCards && weakCards.length > 0) {
+    lines.push("Hard flashcards (low ease):");
+    for (const c of weakCards) {
+      lines.push(
+        `- Q: ${c.question.slice(0, 160)} | A: ${String(c.answer).slice(0, 120)} (ease ${c.ease})`
+      );
+    }
+  }
+
+  const wrongIds = new Set<string>();
+  for (const a of attempts ?? []) {
+    if (Array.isArray(a.wrong_quiz_ids)) {
+      for (const id of a.wrong_quiz_ids) wrongIds.add(String(id));
+    }
+  }
+  if (wrongIds.size > 0) {
+    const { data: quizzes } = await supabase
+      .from("quizzes")
+      .select("question, correct_answer")
+      .eq("study_id", studyId)
+      .in("id", Array.from(wrongIds).slice(0, 8));
+    if (quizzes && quizzes.length > 0) {
+      lines.push("Missed quiz items:");
+      for (const q of quizzes) {
+        lines.push(
+          `- ${q.question.slice(0, 160)} (answer: ${String(q.correct_answer).slice(0, 80)})`
+        );
+      }
+    }
+  }
+
+  return lines.join("\n") || "No weak cards or missed quizzes recorded yet.";
+}
+
 export async function GET(request: Request) {
   const supabase = createClient();
   const {
@@ -39,6 +96,7 @@ export async function POST(request: Request) {
   }
 
   const { study_id, message } = parsed.data;
+  const mode = parsed.data.mode === "tutor" ? "tutor" : "chat";
   const wantsStream =
     request.headers.get("accept")?.includes("text/event-stream") ||
     new URL(request.url).searchParams.get("stream") === "1";
@@ -121,6 +179,9 @@ export async function POST(request: Request) {
     .filter(Boolean)
     .join("\n\n");
 
+  const weakContext =
+    mode === "tutor" ? await buildWeakContext(study_id, user.id) : undefined;
+
   const historyMsgs = (history ?? [])
     .filter((h) => h.role === "user" || h.role === "assistant")
     .map((h) => ({
@@ -128,13 +189,17 @@ export async function POST(request: Request) {
       content: h.content,
     }));
 
+  const streamParams = {
+    question: message,
+    context,
+    history: historyMsgs,
+    mode: mode as "chat" | "tutor",
+    weakContext,
+  };
+
   if (!wantsStream) {
     let answer = "";
-    for await (const chunk of streamChatAboutStudy({
-      question: message,
-      context,
-      history: historyMsgs,
-    })) {
+    for await (const chunk of streamChatAboutStudy(streamParams)) {
       answer += chunk;
     }
 
@@ -167,11 +232,7 @@ export async function POST(request: Request) {
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        for await (const chunk of streamChatAboutStudy({
-          question: message,
-          context,
-          history: historyMsgs,
-        })) {
+        for await (const chunk of streamChatAboutStudy(streamParams)) {
           full += chunk;
           controller.enqueue(
             encoder.encode(`data: ${JSON.stringify({ token: chunk })}\n\n`)

@@ -8,6 +8,7 @@ import {
   ArrowUpRight,
   FileAudio,
   FileText,
+  FolderOpen,
   Presentation,
   Type,
   Video,
@@ -61,6 +62,7 @@ function kindFromStudy(study: Study): {
     audio: { label: "Audio", icon: FileAudio },
     text: { label: "Text", icon: Type },
     youtube: { label: "YouTube", icon: Clapperboard },
+    notion: { label: "Notion", icon: FolderOpen },
   };
 
   return map[study.content_type] ?? { label: "Study", icon: FileText };

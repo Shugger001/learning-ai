@@ -225,7 +225,14 @@ export async function POST(request: Request) {
     .single();
 
   if (studyError || !study) {
-    return apiError(studyError?.message ?? "Failed to create study", 500);
+    const msg = studyError?.message ?? "Failed to create study";
+    if (msg.includes("content_type") || msg.includes("notion") || msg.includes("enum")) {
+      return apiError(
+        "Notion import needs APPLY_TUTOR_IMPORT.sql — run it in Supabase SQL Editor.",
+        503
+      );
+    }
+    return apiError(msg, 500);
   }
 
   if (profile) {

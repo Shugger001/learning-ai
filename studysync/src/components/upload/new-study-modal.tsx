@@ -6,6 +6,7 @@ import { useDropzone } from "react-dropzone";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   FileText,
+  FolderOpen,
   Link2,
   Loader2,
   Mic,
@@ -33,6 +34,7 @@ import type { ApiResponse } from "@/types/api";
 import type { ContentType, DetailLevel, Study } from "@/types/database";
 
 const MAX_FILE_BYTES = 50 * 1024 * 1024;
+const MAX_FILES = 25;
 
 interface NewStudyModalProps {
   open: boolean;
@@ -69,6 +71,16 @@ const CONTENT_TYPES: {
       ],
       "application/vnd.ms-powerpoint": [".ppt", ".pptx"],
       "application/octet-stream": [".pdf", ".pptx", ".ppt"],
+    },
+  },
+  {
+    type: "notion",
+    label: "Notion / Folder",
+    icon: FolderOpen,
+    accept: {
+      "text/markdown": [".md"],
+      "text/plain": [".txt", ".md"],
+      "application/pdf": [".pdf"],
     },
   },
   {
@@ -131,7 +143,7 @@ export function NewStudyModal({
       setError(null);
       if (accepted.length) {
         setFiles((prev) => {
-          const merged = [...prev, ...accepted].slice(0, 10);
+          const merged = [...prev, ...accepted].slice(0, MAX_FILES);
           return merged;
         });
         if (!title && accepted[0]) {
@@ -159,11 +171,16 @@ export function NewStudyModal({
     onDrop,
     multiple: true,
     accept: Object.keys(accept).length ? accept : undefined,
-    disabled: contentType === "text" || contentType === "youtube",
+    disabled:
+      contentType === "text" ||
+      contentType === "youtube" ||
+      contentType === "notion",
     maxSize: MAX_FILE_BYTES,
     noClick: true,
     noKeyboard: true,
   });
+
+  const folderInputRef = useRef<HTMLInputElement>(null);
 
   function reset() {
     setStep(1);
@@ -204,7 +221,7 @@ export function NewStudyModal({
         const recorded = new File([blob], `lecture-${Date.now()}.webm`, {
           type: "audio/webm",
         });
-        setFiles((prev) => [...prev, recorded].slice(0, 10));
+        setFiles((prev) => [...prev, recorded].slice(0, MAX_FILES));
         if (!title) setTitle("Live lecture recording");
         setContentType("audio");
       };
@@ -264,9 +281,10 @@ export function NewStudyModal({
     if (
       contentType !== "text" &&
       contentType !== "youtube" &&
+      !(contentType === "notion" && textContent.trim()) &&
       files.length === 0
     ) {
-      setError("Please upload or record at least one file before generating.");
+      setError("Please upload files or paste Notion export text.");
       return;
     }
     const oversized = files.find((f) => f.size > MAX_FILE_BYTES);
@@ -279,8 +297,39 @@ export function NewStudyModal({
 
     try {
       let filePaths: string[] | undefined;
+      let combinedNotionText = textContent;
 
-      if (files.length > 0 && contentType !== "text" && contentType !== "youtube") {
+      if (contentType === "notion" && files.length > 0) {
+        const mdFiles = files.filter((f) => /\.(md|txt)$/i.test(f.name));
+        const pdfFiles = files.filter((f) => /\.pdf$/i.test(f.name));
+        if (mdFiles.length > 0) {
+          const parts: string[] = [];
+          if (textContent.trim()) parts.push(textContent.trim());
+          for (const file of mdFiles) {
+            parts.push(`\n\n## ${file.name}\n\n${await file.text()}`);
+          }
+          combinedNotionText = parts.join("\n");
+        }
+        if (pdfFiles.length > 0) {
+          const supabase = createClient();
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (!user) {
+            setError("Please sign in again to upload.");
+            setSubmitting(false);
+            return;
+          }
+          filePaths = [];
+          for (const file of pdfFiles) {
+            filePaths.push(await uploadOneFile(supabase, user.id, file));
+          }
+        }
+      } else if (
+        files.length > 0 &&
+        contentType !== "text" &&
+        contentType !== "youtube"
+      ) {
         const supabase = createClient();
         const {
           data: { user },
@@ -297,16 +346,26 @@ export function NewStudyModal({
         }
       }
 
+      const effectiveType =
+        contentType === "notion" &&
+        filePaths?.length &&
+        !combinedNotionText.trim()
+          ? "pdf"
+          : contentType;
+
       const res = await fetch("/api/studies", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: title || "Untitled Study",
-          content_type: contentType,
+          content_type: effectiveType,
           flashcard_count: flashcardCount,
           quiz_count: quizCount,
           detail_level: detailLevel,
-          text_content: contentType === "text" ? textContent : undefined,
+          text_content:
+            effectiveType === "text" || effectiveType === "notion"
+              ? combinedNotionText
+              : undefined,
           source_url: contentType === "youtube" ? youtubeUrl : undefined,
           file_paths: filePaths,
         }),
@@ -344,12 +403,41 @@ export function NewStudyModal({
     }
   }
 
+  function onFolderPicked(list: FileList | null) {
+    if (!list?.length) return;
+    const picked = Array.from(list).filter((f) => {
+      const n = f.name.toLowerCase();
+      return (
+        n.endsWith(".pdf") ||
+        n.endsWith(".md") ||
+        n.endsWith(".txt") ||
+        n.endsWith(".pptx") ||
+        n.endsWith(".ppt")
+      );
+    });
+    if (!picked.length) {
+      setError("No PDF, Markdown, or PPTX files found in that folder.");
+      return;
+    }
+    setFiles((prev) => [...prev, ...picked].slice(0, MAX_FILES));
+    if (!title) {
+      setTitle(
+        picked.length === 1
+          ? picked[0].name.replace(/\.[^.]+$/, "")
+          : "Imported folder pack"
+      );
+    }
+    setError(null);
+  }
+
   const canNextFromStep2 =
     contentType === "text"
       ? textContent.trim().length > 20
       : contentType === "youtube"
         ? youtubeUrl.trim().length > 10
-        : files.length > 0;
+        : contentType === "notion"
+          ? textContent.trim().length > 20 || files.length > 0
+          : files.length > 0;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -430,6 +518,68 @@ export function NewStudyModal({
                   />
                 </div>
               </div>
+            ) : contentType === "notion" ? (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="notion-paste">Paste Notion export (Markdown)</Label>
+                  <Textarea
+                    id="notion-paste"
+                    value={textContent}
+                    onChange={(e) => {
+                      setTextContent(e.target.value);
+                      if (!title) setTitle("Notion notes");
+                    }}
+                    className="min-h-[120px]"
+                    placeholder="Export a Notion page as Markdown and paste it here…"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Or import a folder of Notion .md exports and/or PDFs (up to {MAX_FILES}).
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => folderInputRef.current?.click()}
+                  >
+                    <FolderOpen className="h-4 w-4" />
+                    Choose folder
+                  </Button>
+                  <input
+                    ref={folderInputRef}
+                    type="file"
+                    className="hidden"
+                    multiple
+                    // @ts-expect-error webkitdirectory is non-standard but widely supported
+                    webkitdirectory=""
+                    directory=""
+                    onChange={(e) => {
+                      onFolderPicked(e.target.files);
+                      e.target.value = "";
+                    }}
+                  />
+                </div>
+                {files.length > 0 ? (
+                  <ul className="max-h-40 space-y-2 overflow-y-auto text-sm">
+                    {files.map((f, i) => (
+                      <li
+                        key={`${f.name}-${i}`}
+                        className="flex items-center justify-between gap-3 border border-border/60 px-3 py-2"
+                      >
+                        <span className="truncate">{f.name}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeFile(i)}
+                        >
+                          Remove
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
             ) : (
               <>
                 {contentType === "audio" ? (
@@ -448,6 +598,31 @@ export function NewStudyModal({
                     <span className="self-center text-sm text-muted-foreground">
                       or upload an audio file below
                     </span>
+                  </div>
+                ) : null}
+                {contentType === "pdf" ? (
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => folderInputRef.current?.click()}
+                    >
+                      <FolderOpen className="h-4 w-4" />
+                      Import PDF folder
+                    </Button>
+                    <input
+                      ref={folderInputRef}
+                      type="file"
+                      className="hidden"
+                      multiple
+                      // @ts-expect-error webkitdirectory is non-standard but widely supported
+                      webkitdirectory=""
+                      directory=""
+                      onChange={(e) => {
+                        onFolderPicked(e.target.files);
+                        e.target.value = "";
+                      }}
+                    />
                   </div>
                 ) : null}
                 <div
@@ -475,7 +650,7 @@ export function NewStudyModal({
                         : "Drag & drop files"}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      or click to browse · up to 10 files, 50 MB each
+                      or click to browse · up to {MAX_FILES} files, 50 MB each
                     </p>
                   </div>
                 </div>

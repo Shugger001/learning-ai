@@ -14,7 +14,7 @@ export async function extractTextFromBuffer(params: {
 }): Promise<string> {
   const { buffer, contentType, filename, mimeType } = params;
 
-  if (contentType === "text") {
+  if (contentType === "text" || contentType === "notion") {
     return buffer.toString("utf-8");
   }
 

@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const createStudySchema = z.object({
   title: z.string().min(1).max(200),
-  content_type: z.enum(["video", "pdf", "audio", "text", "youtube"]),
+  content_type: z.enum(["video", "pdf", "audio", "text", "youtube", "notion"]),
   flashcard_count: z.union([z.literal(10), z.literal(20), z.literal(50)]),
   quiz_count: z.union([
     z.literal(5),
@@ -17,7 +17,7 @@ export const createStudySchema = z.object({
   /** Path in lectures bucket after client-side direct upload */
   file_path: z.string().min(3).optional(),
   /** Multiple storage paths after client-side direct upload */
-  file_paths: z.array(z.string().min(3)).min(1).max(10).optional(),
+  file_paths: z.array(z.string().min(3)).min(1).max(25).optional(),
 });
 
 export const updateFlashcardSchema = z.object({
@@ -57,6 +57,7 @@ export const updateQuizSchema = z.object({
 export const chatMessageSchema = z.object({
   study_id: z.string().uuid(),
   message: z.string().min(1).max(4000),
+  mode: z.enum(["chat", "tutor"]).optional(),
 });
 
 export const practiceSchema = z.object({

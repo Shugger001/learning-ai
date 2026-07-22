@@ -6,14 +6,21 @@ import { motion } from "framer-motion";
 import { Loader2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils/cn";
 import { EASE } from "@/lib/motion";
 import type { ApiResponse } from "@/types/api";
 import type { ChatMessage } from "@/types/database";
 
-const SUGGESTIONS = [
+const CHAT_SUGGESTIONS = [
   "Explain the main idea in simple terms",
   "What should I memorize for a quiz?",
   "Give me a practice question with the answer",
+];
+
+const TUTOR_SUGGESTIONS = [
+  "Quiz me on my weakest cards",
+  "Ask me a Socratic question about the hard parts",
+  "I got this wrong before — walk me through it",
 ];
 
 export function ChatPanel({ studyId }: { studyId: string }) {
@@ -22,6 +29,7 @@ export function ChatPanel({ studyId }: { studyId: string }) {
   const [loading, setLoading] = useState(false);
   const [streamingId, setStreamingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<"chat" | "tutor">("chat");
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -72,7 +80,11 @@ export function ChatPanel({ studyId }: { studyId: string }) {
           "Content-Type": "application/json",
           Accept: "text/event-stream",
         },
-        body: JSON.stringify({ study_id: studyId, message: question }),
+        body: JSON.stringify({
+          study_id: studyId,
+          message: question,
+          mode,
+        }),
       });
 
       if (!res.ok || !res.body) {
@@ -141,17 +153,45 @@ export function ChatPanel({ studyId }: { studyId: string }) {
     setStreamingId(null);
   }
 
+  const suggestions = mode === "tutor" ? TUTOR_SUGGESTIONS : CHAT_SUGGESTIONS;
+
   return (
     <div className="flex h-[min(70vh,640px)] flex-col border border-border/70 bg-card/40">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 px-3 py-2">
+        <div className="flex gap-1">
+          <Button
+            type="button"
+            size="sm"
+            variant={mode === "chat" ? "default" : "ghost"}
+            onClick={() => setMode("chat")}
+          >
+            Q&A
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={mode === "tutor" ? "default" : "ghost"}
+            onClick={() => setMode("tutor")}
+          >
+            AI tutor
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {mode === "tutor"
+            ? "Socratic mode · uses your weak cards"
+            : "Answers from this study’s materials"}
+        </p>
+      </div>
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
         {messages.length === 0 ? (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Ask anything about this study - concepts, definitions, or practice
-              explanations.
+              {mode === "tutor"
+                ? "I’ll quiz you on weak spots and guide with questions—try a prompt below."
+                : "Ask anything about this study — concepts, definitions, or practice explanations."}
             </p>
             <div className="flex flex-wrap gap-2">
-              {SUGGESTIONS.map((prompt) => (
+              {suggestions.map((prompt) => (
                 <button
                   key={prompt}
                   type="button"
@@ -163,7 +203,20 @@ export function ChatPanel({ studyId }: { studyId: string }) {
               ))}
             </div>
           </div>
-        ) : null}
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {suggestions.map((prompt) => (
+              <button
+                key={prompt}
+                type="button"
+                onClick={() => void send(prompt)}
+                className="border border-border/70 px-2 py-1 text-left text-[11px] text-muted-foreground hover:text-foreground"
+              >
+                {prompt}
+              </button>
+            ))}
+          </div>
+        )}
         {messages.map((m) => (
           <motion.div
             key={m.id}
@@ -207,8 +260,12 @@ export function ChatPanel({ studyId }: { studyId: string }) {
         <Textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask about this lecture…"
-          className="min-h-[44px] resize-none"
+          placeholder={
+            mode === "tutor"
+              ? "Answer the tutor or ask for a hint…"
+              : "Ask about this lecture…"
+          }
+          className={cn("min-h-[44px] resize-none")}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();

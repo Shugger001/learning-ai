@@ -1,4 +1,10 @@
-export type ContentType = "video" | "pdf" | "audio" | "text" | "youtube";
+export type ContentType =
+  | "video"
+  | "pdf"
+  | "audio"
+  | "text"
+  | "youtube"
+  | "notion";
 export type StudyStatus = "processing" | "complete" | "error";
 export type FlashcardDifficulty = "easy" | "medium" | "hard";
 export type DetailLevel = "concise" | "detailed";

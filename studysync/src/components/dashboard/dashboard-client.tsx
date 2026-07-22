@@ -8,6 +8,7 @@ import {
   ArrowUpRight,
   BookOpen,
   FileText,
+  FolderOpen,
   Mic,
   Plus,
   Type,
@@ -77,6 +78,7 @@ const MORE_FORMATS: {
   icon: React.ComponentType<{ className?: string }>;
 }[] = [
   { type: "pdf", label: "PDF / Slides", icon: FileText },
+  { type: "notion", label: "Notion / Folder", icon: FolderOpen },
   { type: "video", label: "Video", icon: Video },
   { type: "text", label: "Paste text", icon: Type },
 ];

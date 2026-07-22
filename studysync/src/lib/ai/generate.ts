@@ -445,9 +445,14 @@ export async function* streamChatAboutStudy(params: {
   question: string;
   context: string;
   history: { role: "user" | "assistant"; content: string }[];
+  mode?: "chat" | "tutor";
+  weakContext?: string;
 }): AsyncGenerator<string> {
   if (!process.env.OPENAI_API_KEY) {
-    const mock = `Based on your materials: ${params.context.slice(0, 280)}… (Add OPENAI_API_KEY for full chat answers.)`;
+    const mock =
+      params.mode === "tutor"
+        ? `Let's dig into a weak spot. Based on your materials: ${params.context.slice(0, 200)}… What do you think is the key idea? (Add OPENAI_API_KEY for full tutor mode.)`
+        : `Based on your materials: ${params.context.slice(0, 280)}… (Add OPENAI_API_KEY for full chat answers.)`;
     for (let i = 0; i < mock.length; i += 12) {
       yield mock.slice(i, i + 12);
       await new Promise((r) => setTimeout(r, 18));
@@ -456,14 +461,19 @@ export async function* streamChatAboutStudy(params: {
   }
 
   const openai = getOpenAI();
+  const isTutor = params.mode === "tutor";
+  const system = isTutor
+    ? `You are StudySync Tutor in Socratic mode. Guide the learner with short questions—do not dump full answers unless they ask or are clearly stuck after 2+ turns. Prefer one focused question at a time. Use ONLY the study materials and weak-spot context below. When quizzing, wait for their answer before revealing. Use markdown sparingly.\n\nMATERIALS:\n${params.context.slice(0, 70_000)}\n\nWEAK SPOTS:\n${(params.weakContext || "None listed.").slice(0, 8_000)}`
+    : `You are StudySync Tutor. Answer ONLY using the study materials below. Be clear and concise. Use markdown when helpful.\n\nMATERIALS:\n${params.context.slice(0, 80_000)}`;
+
   const stream = await openai.chat.completions.create({
     model: "gpt-4o-mini",
-    temperature: 0.3,
+    temperature: isTutor ? 0.45 : 0.3,
     stream: true,
     messages: [
       {
         role: "system",
-        content: `You are StudySync Tutor. Answer ONLY using the study materials below. Be clear and concise. Use markdown when helpful.\n\nMATERIALS:\n${params.context.slice(0, 80_000)}`,
+        content: system,
       },
       ...params.history.slice(-8),
       { role: "user" as const, content: params.question },

@@ -93,11 +93,13 @@ export async function POST(request: Request) {
 
         const buffer = Buffer.from(await fileData.arrayBuffer());
         const filename = path.split("/").pop() || "upload.bin";
-        const contentType =
-          (study.content_type as ContentType) === "pdf" ||
-          (study.content_type as ContentType) === "audio" ||
-          (study.content_type as ContentType) === "video"
-            ? (study.content_type as ContentType)
+        const studyType = study.content_type as ContentType;
+        const contentType: ContentType =
+          studyType === "pdf" ||
+          studyType === "audio" ||
+          studyType === "video" ||
+          studyType === "notion"
+            ? studyType
             : inferContentTypeFromFilename(filename);
 
         await setProgress(

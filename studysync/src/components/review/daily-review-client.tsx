@@ -256,6 +256,9 @@ export function DailyReviewClient({
               <Link href="/dashboard">Back to library</Link>
             </Button>
             <Button asChild variant="outline">
+              <Link href="/review/widget">Quick widget</Link>
+            </Button>
+            <Button asChild variant="outline">
               <Link href="/progress">See progress</Link>
             </Button>
           </div>
