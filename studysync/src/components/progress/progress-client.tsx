@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Flame, Layers, ListChecks, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { fadeUp, staggerContainer, staggerItem } from "@/lib/motion";
 import type { ApiResponse } from "@/types/api";
 import type { EmailPreferences } from "@/types/database";
@@ -50,6 +51,8 @@ export interface ProgressPayload {
 
 export function ProgressClient({ data }: { data: ProgressPayload }) {
   const [weeklyRecap, setWeeklyRecap] = useState(false);
+  const [coachDigest, setCoachDigest] = useState(false);
+  const [coachEmail, setCoachEmail] = useState("");
   const [prefMessage, setPrefMessage] = useState<string | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [shareMessage, setShareMessage] = useState<string | null>(null);
@@ -58,7 +61,11 @@ export function ProgressClient({ data }: { data: ProgressPayload }) {
     void fetch("/api/settings/email-preferences")
       .then((r) => r.json())
       .then((json: ApiResponse<EmailPreferences>) => {
-        if (json.success) setWeeklyRecap(Boolean(json.data.weekly_recap));
+        if (json.success) {
+          setWeeklyRecap(Boolean(json.data.weekly_recap));
+          setCoachDigest(Boolean(json.data.coach_digest));
+          setCoachEmail(json.data.coach_email ?? "");
+        }
       })
       .catch(() => undefined);
     void fetch("/api/progress/share")
@@ -86,6 +93,30 @@ export function ProgressClient({ data }: { data: ProgressPayload }) {
       return;
     }
     setPrefMessage(next ? "Weekly recap enabled" : "Weekly recap disabled");
+  }
+
+  async function saveCoach(next: boolean, email = coachEmail) {
+    setCoachDigest(next);
+    setPrefMessage(null);
+    const res = await fetch("/api/settings/email-preferences", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        coach_digest: next,
+        coach_email: email.trim() || null,
+      }),
+    });
+    const json = (await res.json()) as ApiResponse<EmailPreferences>;
+    if (!json.success) {
+      setCoachDigest(!next);
+      setPrefMessage(json.error);
+      return;
+    }
+    setPrefMessage(
+      next
+        ? `Coach digest on · ${json.data.coach_email ?? "set an email"}`
+        : "Coach digest disabled"
+    );
   }
 
   async function enableShare() {
@@ -241,6 +272,44 @@ export function ProgressClient({ data }: { data: ProgressPayload }) {
         >
           {weeklyRecap ? "On" : "Off"}
         </Button>
+      </div>
+
+      <div className="space-y-3 border border-border/70 bg-card/40 px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium">Parent / coach digest</p>
+            <p className="text-xs text-muted-foreground">
+              Weekly email with streak and weak topics — no card question text.
+            </p>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant={coachDigest ? "default" : "outline"}
+            disabled={coachDigest ? false : !coachEmail.trim()}
+            onClick={() => void saveCoach(!coachDigest)}
+          >
+            {coachDigest ? "On" : "Off"}
+          </Button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Input
+            type="email"
+            placeholder="coach@school.edu"
+            value={coachEmail}
+            onChange={(e) => setCoachEmail(e.target.value)}
+            className="max-w-xs"
+          />
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={!coachEmail.trim()}
+            onClick={() => void saveCoach(true, coachEmail)}
+          >
+            Save email
+          </Button>
+        </div>
       </div>
 
       <section className="grid gap-8 lg:grid-cols-2">

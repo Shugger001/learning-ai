@@ -6,6 +6,17 @@ function newUnsubToken() {
   return crypto.randomUUID().replace(/-/g, "");
 }
 
+const defaults = {
+  weekly_recap: false,
+  timezone: "UTC",
+  last_weekly_sent_at: null as string | null,
+  unsubscribe_token: null as string | null,
+  coach_digest: false,
+  coach_email: null as string | null,
+  free_minutes: 25,
+  last_coach_sent_at: null as string | null,
+};
+
 export async function GET() {
   const supabase = createClient();
   const {
@@ -21,26 +32,12 @@ export async function GET() {
 
   if (error) {
     if (error.message.includes("email_preferences") || error.code === "PGRST205") {
-      return apiSuccess({
-        user_id: user.id,
-        weekly_recap: false,
-        timezone: "UTC",
-        last_weekly_sent_at: null,
-        unsubscribe_token: null,
-      });
+      return apiSuccess({ user_id: user.id, ...defaults });
     }
     return apiError(error.message, 500);
   }
 
-  return apiSuccess(
-    data ?? {
-      user_id: user.id,
-      weekly_recap: false,
-      timezone: "UTC",
-      last_weekly_sent_at: null,
-      unsubscribe_token: null,
-    }
-  );
+  return apiSuccess(data ?? { user_id: user.id, ...defaults });
 }
 
 export async function PATCH(request: Request) {
@@ -55,6 +52,9 @@ export async function PATCH(request: Request) {
     .object({
       weekly_recap: z.boolean().optional(),
       timezone: z.string().min(1).max(64).optional(),
+      coach_digest: z.boolean().optional(),
+      coach_email: z.string().email().nullable().optional(),
+      free_minutes: z.number().int().min(10).max(120).optional(),
     })
     .safeParse(body);
   if (!parsed.success) {
@@ -73,7 +73,10 @@ export async function PATCH(request: Request) {
     updated_at: new Date().toISOString(),
   };
 
-  if (parsed.data.weekly_recap === true && !existing?.unsubscribe_token) {
+  if (
+    (parsed.data.weekly_recap === true || parsed.data.coach_digest === true) &&
+    !existing?.unsubscribe_token
+  ) {
     row.unsubscribe_token = newUnsubToken();
   }
 
@@ -90,9 +93,12 @@ export async function PATCH(request: Request) {
         503
       );
     }
-    if (error.message.includes("unsubscribe_token")) {
+    if (
+      error.message.includes("coach_") ||
+      error.message.includes("free_minutes")
+    ) {
       return apiError(
-        "Unsubscribe tokens need APPLY_GRADEBOOK_ROOMS.sql — run it in Supabase SQL Editor.",
+        "Coach digest / free time need APPLY_GOALS_BATTLES_DIGEST.sql — run it in Supabase SQL Editor.",
         503
       );
     }

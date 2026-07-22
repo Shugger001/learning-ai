@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { Bell, BellOff, CheckCircle2, Layers, ListChecks } from "lucide-react";
 import { FlashcardsPanel } from "@/components/study/flashcards-panel";
 import { QuizPanel } from "@/components/study/quiz-panel";
+import { DailyGoalCard } from "@/components/goals/daily-goal-card";
 import { Button } from "@/components/ui/button";
 import { fadeUp } from "@/lib/motion";
 import {
@@ -133,6 +134,8 @@ export function DailyReviewClient({
             : "Spaced cards first, then a short quiz from the same studies."}
         </p>
       </div>
+
+      {!focusDate ? <DailyGoalCard /> : null}
 
       <div className="flex flex-wrap items-center gap-2">
         <span

@@ -20,6 +20,7 @@ import { NewStudyModal } from "@/components/upload/new-study-modal";
 import { StudyCard } from "@/components/dashboard/study-card";
 import { FolderBar } from "@/components/dashboard/folder-bar";
 import { FirstRunTour } from "@/components/onboarding/first-run-tour";
+import { DailyGoalCard } from "@/components/goals/daily-goal-card";
 import { Button } from "@/components/ui/button";
 import { ProcessingBar } from "@/components/ui/processing-bar";
 import { AnimatedNumber } from "@/components/ui/animated-number";
@@ -407,6 +408,10 @@ export function DashboardClient({
           ) : null}
         </div>
       </section>
+
+      <div className="mt-8">
+        <DailyGoalCard />
+      </div>
 
       <section className="mt-10">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-3">

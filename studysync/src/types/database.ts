@@ -150,6 +150,10 @@ export interface EmailPreferences {
   timezone: string;
   last_weekly_sent_at: string | null;
   unsubscribe_token?: string | null;
+  coach_digest?: boolean;
+  coach_email?: string | null;
+  free_minutes?: number;
+  last_coach_sent_at?: string | null;
   created_at: string;
   updated_at: string;
 }

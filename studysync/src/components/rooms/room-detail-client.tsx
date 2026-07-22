@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useStudyRoomPresence } from "@/hooks/use-study-room-presence";
+import { QuizBattlePanel } from "@/components/rooms/quiz-battle-panel";
 import type { ApiResponse } from "@/types/api";
 import type { StudyRoom } from "@/types/database";
 
@@ -151,6 +152,8 @@ export function RoomDetailClient() {
           </p>
         ) : null}
       </section>
+
+      <QuizBattlePanel roomCode={room.join_code} isHost={room.isHost} />
     </div>
   );
 }
