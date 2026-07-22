@@ -1,10 +1,13 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Flame, Layers, ListChecks, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { fadeUp, staggerContainer, staggerItem } from "@/lib/motion";
+import type { ApiResponse } from "@/types/api";
+import type { EmailPreferences } from "@/types/database";
 
 export interface ProgressPayload {
   streak: {
@@ -46,6 +49,35 @@ export interface ProgressPayload {
 }
 
 export function ProgressClient({ data }: { data: ProgressPayload }) {
+  const [weeklyRecap, setWeeklyRecap] = useState(false);
+  const [prefMessage, setPrefMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    void fetch("/api/settings/email-preferences")
+      .then((r) => r.json())
+      .then((json: ApiResponse<EmailPreferences>) => {
+        if (json.success) setWeeklyRecap(Boolean(json.data.weekly_recap));
+      })
+      .catch(() => undefined);
+  }, []);
+
+  async function toggleRecap(next: boolean) {
+    setWeeklyRecap(next);
+    setPrefMessage(null);
+    const res = await fetch("/api/settings/email-preferences", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ weekly_recap: next }),
+    });
+    const json = (await res.json()) as ApiResponse<EmailPreferences>;
+    if (!json.success) {
+      setWeeklyRecap(!next);
+      setPrefMessage(json.error);
+      return;
+    }
+    setPrefMessage(next ? "Weekly recap enabled" : "Weekly recap disabled");
+  }
+
   const cardsThisWeek = data.activity
     .slice(0, 7)
     .reduce((sum, d) => sum + (d.cards_reviewed ?? 0), 0);
@@ -123,6 +155,29 @@ export function ProgressClient({ data }: { data: ProgressPayload }) {
         </Button>
         <Button asChild variant="outline">
           <Link href="/library">Browse library</Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link href="/classes">Classes</Link>
+        </Button>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 border border-border/70 bg-card/40 px-4 py-3">
+        <div>
+          <p className="text-sm font-medium">Weekly recap email</p>
+          <p className="text-xs text-muted-foreground">
+            Due cards, streak, and weak topics every Monday.
+          </p>
+          {prefMessage ? (
+            <p className="mt-1 text-xs text-muted-foreground">{prefMessage}</p>
+          ) : null}
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          variant={weeklyRecap ? "default" : "outline"}
+          onClick={() => void toggleRecap(!weeklyRecap)}
+        >
+          {weeklyRecap ? "On" : "Off"}
         </Button>
       </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,8 @@ interface FlashcardsPanelProps {
   /** Compact mode for dashboard mini-review (no edit). */
   compact?: boolean;
   onRated?: () => void;
+  /** Filter deck to cards matching this query (mind map jump). */
+  focusQuery?: string | null;
 }
 
 type SrsRating = "again" | "hard" | "good" | "easy";
@@ -26,14 +28,25 @@ export function FlashcardsPanel({
   flashcards: initial,
   compact = false,
   onRated,
+  focusQuery = null,
 }: FlashcardsPanelProps) {
   const [cards, setCards] = useState(initial);
-  const [dueOnly, setDueOnly] = useState(!compact);
+  const [dueOnly, setDueOnly] = useState(!compact && !focusQuery);
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [direction, setDirection] = useState(1);
+
+  const focusedCards = useMemo(() => {
+    if (!focusQuery?.trim()) return null;
+    const q = focusQuery.toLowerCase();
+    return cards.filter(
+      (c) =>
+        c.question.toLowerCase().includes(q) ||
+        c.answer.toLowerCase().includes(q)
+    );
+  }, [cards, focusQuery]);
 
   const dueCount = useMemo(() => {
     const now = Date.now();
@@ -45,8 +58,15 @@ export function FlashcardsPanel({
     return cards.filter((c) => new Date(c.due_at || 0).getTime() <= now);
   }, [cards]);
 
-  const queue = dueOnly ? dueCards : cards;
-  const caughtUp = dueOnly && dueCards.length === 0 && cards.length > 0;
+  const queue = focusedCards ?? (dueOnly ? dueCards : cards);
+  const caughtUp =
+    !focusQuery && dueOnly && dueCards.length === 0 && cards.length > 0;
+
+  useEffect(() => {
+    setIndex(0);
+    setFlipped(false);
+    if (focusQuery) setDueOnly(false);
+  }, [focusQuery]);
 
   if (cards.length === 0) {
     return (
@@ -88,8 +108,22 @@ export function FlashcardsPanel({
     );
   }
 
+  if (focusQuery && (!focusedCards || focusedCards.length === 0)) {
+    return (
+      <div className="mx-auto max-w-md space-y-3 py-8 text-center">
+        <p className="font-display text-xl font-semibold tracking-tight">
+          No cards match “{focusQuery}”
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Try another mind-map node or browse the full deck.
+        </p>
+      </div>
+    );
+  }
+
   const safeIndex = Math.min(index, Math.max(0, queue.length - 1));
   const card = queue[safeIndex];
+  if (!card) return null;
 
   async function rate(srs_rating: SrsRating) {
     const advanceLocal = () => {
@@ -157,12 +191,18 @@ export function FlashcardsPanel({
 
   return (
     <div className={cn("mx-auto max-w-xl space-y-6", compact && "max-w-md")}>
+      {focusQuery ? (
+        <p className="rounded-md border border-border/70 bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+          Focused on mind-map topic:{" "}
+          <span className="font-medium text-foreground">{focusQuery}</span>
+        </p>
+      ) : null}
       <div className="flex items-center justify-between text-sm text-muted-foreground">
         <span>
           Card {safeIndex + 1} of {queue.length}
-          {dueOnly ? ` · ${dueCount} due` : ""}
+          {dueOnly && !focusQuery ? ` · ${dueCount} due` : ""}
         </span>
-        {!compact ? (
+        {!compact && !focusQuery ? (
           <button
             type="button"
             className="text-xs font-medium text-primary hover:underline"

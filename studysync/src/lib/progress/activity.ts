@@ -13,7 +13,11 @@ function yesterdayUtc(): string {
 /** Record daily study activity and update streak counters. */
 export async function recordStudyActivity(
   userId: string,
-  delta: { cardsReviewed?: number; quizzesTaken?: number }
+  delta: {
+    cardsReviewed?: number;
+    quizzesTaken?: number;
+    studyId?: string;
+  }
 ) {
   let admin;
   try {
@@ -81,4 +85,39 @@ export async function recordStudyActivity(
       last_study_date: day,
     })
     .eq("user_id", userId);
+
+  // Bump progress only for assignments that include this study
+  if (cards > 0 && delta.studyId) {
+    const { data: assignments } = await admin
+      .from("class_assignments")
+      .select("id")
+      .eq("study_id", delta.studyId);
+    for (const a of assignments ?? []) {
+      const { data: existingProg } = await admin
+        .from("assignment_progress")
+        .select("id, cards_reviewed")
+        .eq("assignment_id", a.id)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (existingProg) {
+        const nextCount = (existingProg.cards_reviewed ?? 0) + cards;
+        await admin
+          .from("assignment_progress")
+          .update({
+            cards_reviewed: nextCount,
+            last_reviewed_at: new Date().toISOString(),
+            completed_at: nextCount >= 10 ? new Date().toISOString() : null,
+          })
+          .eq("id", existingProg.id);
+      } else {
+        await admin.from("assignment_progress").insert({
+          assignment_id: a.id,
+          user_id: userId,
+          cards_reviewed: cards,
+          last_reviewed_at: new Date().toISOString(),
+          completed_at: cards >= 10 ? new Date().toISOString() : null,
+        });
+      }
+    }
+  }
 }

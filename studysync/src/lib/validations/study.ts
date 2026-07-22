@@ -27,9 +27,24 @@ export const updateFlashcardSchema = z.object({
   srs_rating: z.enum(["again", "hard", "good", "easy"]).optional(),
 });
 
+const mindMapNodeSchema: z.ZodType<{
+  name: string;
+  id?: string;
+  children?: unknown[];
+  collapsed?: boolean;
+}> = z.lazy(() =>
+  z.object({
+    name: z.string().min(1),
+    id: z.string().optional(),
+    collapsed: z.boolean().optional(),
+    children: z.array(mindMapNodeSchema).optional(),
+  })
+);
+
 export const updateNoteSchema = z.object({
   content: z.string().optional(),
   summary: z.string().optional(),
+  mind_map: mindMapNodeSchema.nullable().optional(),
 });
 
 export const updateQuizSchema = z.object({

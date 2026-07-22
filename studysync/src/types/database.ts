@@ -94,7 +94,57 @@ export interface Quiz {
 
 export interface MindMapNode {
   name: string;
+  id?: string;
   children?: MindMapNode[];
+  collapsed?: boolean;
+}
+
+export interface ClassRoom {
+  id: string;
+  owner_id: string;
+  name: string;
+  join_code: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ClassMember {
+  id: string;
+  class_id: string;
+  user_id: string | null;
+  email: string;
+  role: "teacher" | "student";
+  invite_token: string | null;
+  accepted_at: string | null;
+  created_at: string;
+}
+
+export interface ClassAssignment {
+  id: string;
+  class_id: string;
+  study_id: string;
+  title: string | null;
+  due_at: string | null;
+  created_by: string;
+  created_at: string;
+}
+
+export interface AssignmentProgress {
+  id: string;
+  assignment_id: string;
+  user_id: string;
+  cards_reviewed: number;
+  last_reviewed_at: string | null;
+  completed_at: string | null;
+}
+
+export interface EmailPreferences {
+  user_id: string;
+  weekly_recap: boolean;
+  timezone: string;
+  last_weekly_sent_at: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Note {

@@ -62,6 +62,7 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
     null
   );
   const [examWrongIds, setExamWrongIds] = useState<string[] | null>(null);
+  const [cardFocusQuery, setCardFocusQuery] = useState<string | null>(null);
 
   const examMode = searchParams.get("exam") === "1";
   const examMinutes = Math.min(
@@ -371,7 +372,10 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
               <NotesPanel note={study.notes} studyId={study.id} />
             ) : null}
             {activeTab === "flashcards" ? (
-              <FlashcardsPanel flashcards={study.flashcards} />
+              <FlashcardsPanel
+                flashcards={study.flashcards}
+                focusQuery={cardFocusQuery}
+              />
             ) : null}
             {activeTab === "quiz" ? (
               <QuizPanel
@@ -383,7 +387,16 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
               />
             ) : null}
             {activeTab === "mindmap" ? (
-              <MindMapPanel mindMap={study.notes?.mind_map ?? null} />
+              <MindMapPanel
+                mindMap={study.notes?.mind_map ?? null}
+                noteId={study.notes?.id}
+                studyTitle={study.title}
+                flashcards={study.flashcards}
+                onJumpToCards={(query) => {
+                  setCardFocusQuery(query);
+                  setActiveTab("flashcards");
+                }}
+              />
             ) : null}
             {activeTab === "chat" ? <ChatPanel studyId={study.id} /> : null}
             {activeTab === "podcast" ? (
