@@ -13,13 +13,11 @@ import {
   Type,
   Video,
   Clapperboard,
-  X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { NewStudyModal } from "@/components/upload/new-study-modal";
 import { StudyCard } from "@/components/dashboard/study-card";
 import { FolderBar } from "@/components/dashboard/folder-bar";
-import { FlashcardsPanel } from "@/components/study/flashcards-panel";
 import { Button } from "@/components/ui/button";
 import { ProcessingBar } from "@/components/ui/processing-bar";
 import { AnimatedNumber } from "@/components/ui/animated-number";
@@ -28,7 +26,6 @@ import { FREE_LIMITS, type UsageRemaining } from "@/lib/billing/limits";
 import type { ApiResponse } from "@/types/api";
 import type {
   ContentType,
-  Flashcard,
   Folder,
   PlanType,
   Study,
@@ -113,9 +110,6 @@ export function DashboardClient({
   const [filter, setFilter] = useState<LibraryFilter>("all");
   const [folderId, setFolderId] = useState<string | null>(null);
   const [showMoreFormats, setShowMoreFormats] = useState(false);
-  const [reviewOpen, setReviewOpen] = useState(false);
-  const [dueCards, setDueCards] = useState<Flashcard[]>([]);
-  const [dueLoading, setDueLoading] = useState(false);
   const [dueCount, setDueCount] = useState(dueToday);
   const [tipIndex, setTipIndex] = useState(0);
 
@@ -222,18 +216,6 @@ export function DashboardClient({
     if (json.success) {
       setStudies((prev) => prev.filter((s) => s.id !== id));
       router.refresh();
-    }
-  }
-
-  async function openDueReview() {
-    setReviewOpen(true);
-    setDueLoading(true);
-    const res = await fetch("/api/flashcards/due");
-    const json = (await res.json()) as ApiResponse<Flashcard[]>;
-    setDueLoading(false);
-    if (json.success) {
-      setDueCards(json.data);
-      setDueCount(json.data.length);
     }
   }
 
@@ -382,47 +364,6 @@ export function DashboardClient({
           ) : null}
         </div>
       </section>
-
-      <AnimatePresence>
-        {reviewOpen ? (
-          <motion.section
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.3 }}
-            className="mt-8 border border-primary/30 bg-card/60 p-5 sm:p-6"
-          >
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <div>
-                <h2 className="font-display text-xl font-semibold tracking-tight">
-                  Due today
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  Quick spaced recall without leaving your library.
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setReviewOpen(false)}
-              >
-                <X className="h-4 w-4" />
-                Close
-              </Button>
-            </div>
-            {dueLoading ? (
-              <p className="text-sm text-muted-foreground">Loading cards…</p>
-            ) : (
-              <FlashcardsPanel
-                flashcards={dueCards}
-                compact
-                onRated={() => setDueCount((c) => Math.max(0, c - 1))}
-              />
-            )}
-          </motion.section>
-        ) : null}
-      </AnimatePresence>
 
       <section className="mt-10">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
