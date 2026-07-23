@@ -99,6 +99,23 @@ export async function transcribeAudio(buffer: Buffer, filename: string) {
   return transcription.text;
 }
 
+/** Slide decks often have few words per page — treat as sparse teaching outlines. */
+export function isSparseSlideSource(text: string, contentType: string): boolean {
+  const isSlideLike =
+    contentType === "pdf" ||
+    /\.pptx?/i.test(contentType) ||
+    /^##\s+Slide\s+\d+/m.test(text);
+
+  if (!isSlideLike) return false;
+
+  const words = text.split(/\s+/).filter(Boolean).length;
+  const slideMarks = (text.match(/^##\s+Slide\s+\d+/gim) ?? []).length;
+  const avgPerSlide = slideMarks > 0 ? words / slideMarks : words;
+
+  // Thin decks: short overall, or many slides with little text each
+  return words < 900 || (slideMarks >= 3 && avgPerSlide < 55);
+}
+
 export async function generateStudyMaterials(params: {
   sourceText: string;
   flashcardCount: number;
@@ -108,16 +125,29 @@ export async function generateStudyMaterials(params: {
 }): Promise<GeneratedMaterials> {
   const openai = getOpenAI();
   const quizCount = Math.min(30, Math.max(1, params.quizCount));
-  const notesGuidance =
-    params.detailLevel === "concise"
+  const truncated = normalizeSourceText(params.sourceText).slice(0, 100_000);
+  const sparse = isSparseSlideSource(truncated, params.contentType);
+
+  const notesGuidance = sparse
+    ? params.detailLevel === "concise"
+      ? "Source is a sparse slide deck. Expand each slide into a short study section (3–6 bullets or 2–3 sentences): define terms, spell out abbreviations, and state why the point matters. Never leave a slide as a one-line echo."
+      : "Source is a sparse slide deck. Expand EVERY slide into a full study section with heading, definitions, explanations, and how ideas connect. Turn bullet fragments into teachable prose a student could study without the original slides. Do not invent unrelated topics, but DO elaborate on what the bullets imply."
+    : params.detailLevel === "concise"
       ? "Keep notes concise: short bullets, high-signal only."
       : "Write detailed, well-structured study notes with clear headings, short paragraphs, examples, and key definitions.";
 
-  const truncated = normalizeSourceText(params.sourceText).slice(0, 100_000);
+  const sparseRules = sparse
+    ? `
+- CRITICAL: The source is thin slide text. Your notes and summary must be SUBSTANTIALLY longer and richer than the source — teach the material, do not mirror blank bullets.
+- For each "## Slide N" section that has real content, produce a matching ## Notes section that explains it.
+- If a slide says "(No extractable text — likely image-heavy)", note that briefly and move on; do not invent fake content for it.
+- Summary: 3–5 full sentences covering the arc of the deck.
+- Notes target length: roughly 80–150 words per contentful slide (or ~400+ words total for short decks).`
+    : "";
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    temperature: 0.4,
+    model: sparse ? "gpt-4o" : "gpt-4o-mini",
+    temperature: sparse ? 0.55 : 0.4,
     response_format: { type: "json_object" },
     messages: [
       {
@@ -143,11 +173,11 @@ Rules:
 - Rewrite slide fragments into coherent study prose; do not dump raw OCR/slide text.
 - Summary must be a readable paragraph (not fragmented lines).
 - Mind map should be hierarchical with 1 root and 2–3 depth levels.
-- Base everything strictly on the source content.`,
+- Stay faithful to the source topics and terminology; do not invent unrelated facts.${sparseRules}`,
       },
       {
         role: "user",
-        content: `Content type: ${params.contentType}\n\nSource material:\n${truncated}`,
+        content: `Content type: ${params.contentType}${sparse ? " (sparse slide deck — expand into full study notes)" : ""}\n\nSource material:\n${truncated}`,
       },
     ],
   });
@@ -158,6 +188,24 @@ Rules:
   }
 
   const parsed = materialsSchema.parse(JSON.parse(raw));
+
+  // Guard against empty/near-empty notes from thin decks
+  if (!parsed.notes?.trim() || parsed.notes.trim().length < 80) {
+    const fallback = generateMockMaterials({
+      sourceText: truncated,
+      flashcardCount: params.flashcardCount,
+      quizCount,
+      titleHint: parsed.title,
+    });
+    return {
+      ...parsed,
+      summary:
+        parsed.summary?.trim().length > 40 ? parsed.summary : fallback.summary,
+      notes: fallback.notes,
+      mind_map: parsed.mind_map?.name ? parsed.mind_map : fallback.mind_map,
+    };
+  }
+
   return parsed;
 }
 

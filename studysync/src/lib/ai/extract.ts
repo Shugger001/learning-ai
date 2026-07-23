@@ -26,11 +26,23 @@ export async function extractTextFromBuffer(params: {
     // unpdf is built for serverless (no pdf.worker.mjs fake-worker path issues)
     const { extractText, getDocumentProxy } = await import("unpdf");
     const pdf = await getDocumentProxy(new Uint8Array(buffer));
-    const result = await extractText(pdf, { mergePages: true });
-    const text = Array.isArray(result.text)
-      ? result.text.join("\n\n")
-      : String(result.text ?? "");
-    if (!text.trim()) {
+    // Per-page text keeps slide-like PDFs structured for the generator
+    const result = await extractText(pdf, { mergePages: false });
+    const pages = Array.isArray(result.text) ? result.text : [String(result.text ?? "")];
+    const sections = pages
+      .map((page, i) => {
+        const body = String(page ?? "")
+          .replace(/\s+/g, " ")
+          .trim();
+        if (!body) {
+          return `## Slide ${i + 1}\n(No extractable text — likely image-heavy)`;
+        }
+        return `## Slide ${i + 1}\n${body}`;
+      })
+      .filter(Boolean);
+
+    const text = sections.join("\n\n").trim();
+    if (!text || wordCount(text) < 8) {
       throw new Error("Could not extract text from PDF");
     }
     return text;
@@ -45,4 +57,8 @@ export async function extractTextFromBuffer(params: {
   }
 
   throw new Error(`Unsupported content type: ${contentType} (${mimeType ?? "unknown"})`);
+}
+
+function wordCount(text: string) {
+  return text.split(/\s+/).filter(Boolean).length;
 }
