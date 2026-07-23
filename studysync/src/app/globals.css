@@ -107,8 +107,24 @@
       );
   }
 
-  /* Dashboard photo sits above the solid body fill */
+  /* Dashboard photo — light wash in light theme so dark text stays readable */
   .dashboard-shell {
+    background-color: hsl(var(--background));
+    background-image:
+      linear-gradient(
+        180deg,
+        hsl(160 20% 98% / 0.92) 0%,
+        hsl(160 18% 97% / 0.88) 40%,
+        hsl(160 14% 96% / 0.94) 100%
+      ),
+      url("/images/dashboard-bg.jpg");
+    background-size: cover;
+    background-position: center 22%;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+  }
+
+  .dark .dashboard-shell {
     background-color: transparent;
     background-image:
       linear-gradient(
@@ -118,15 +134,12 @@
         hsl(168 30% 4% / 0.72) 100%
       ),
       url("/images/dashboard-bg.jpg");
-    background-size: cover;
-    background-position: center 22%;
-    background-attachment: fixed;
-    background-repeat: no-repeat;
   }
 
-  body:has(.dashboard-shell) {
-    background-color: transparent;
-    background-image: none;
+  /* Slightly denser surfaces over the photo so muted text stays crisp */
+  .dashboard-shell .shell-panel,
+  .dashboard-shell [data-surface="card"] {
+    background-color: hsl(var(--card) / 0.92);
   }
 
   h1,
