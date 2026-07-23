@@ -1,5 +1,6 @@
 import { transcribeAudio } from "@/lib/ai/generate";
 import { extractTextFromPptx } from "@/lib/ai/pptx";
+import { ensurePdfDomPolyfills } from "@/lib/ai/pdf-polyfill";
 import type { ContentType } from "@/types/database";
 
 function isPptxFilename(filename: string): boolean {
@@ -23,6 +24,7 @@ export async function extractTextFromBuffer(params: {
       return extractTextFromPptx(buffer);
     }
 
+    await ensurePdfDomPolyfills();
     const { PDFParse } = await import("pdf-parse");
     const parser = new PDFParse({ data: new Uint8Array(buffer) });
     try {
