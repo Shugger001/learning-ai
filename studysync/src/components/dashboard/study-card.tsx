@@ -244,6 +244,22 @@ export function StudyCard({
         )}
       </Button>
 
+      <Button
+        type="button"
+        size="sm"
+        variant="ghost"
+        className="absolute right-11 top-2 h-8 w-8 bg-background/90 p-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+        disabled={busy !== null}
+        aria-label={`Delete ${study.title}`}
+        onClick={(e) => void remove(e)}
+      >
+        {busy === "delete" ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <Trash2 className="h-3.5 w-3.5" />
+        )}
+      </Button>
+
       {study.status === "error" ? (
         <div className="absolute bottom-3 right-3 flex gap-1">
           <Button
@@ -260,20 +276,6 @@ export function StudyCard({
               <RotateCcw className="h-3.5 w-3.5" />
             )}
             Retry
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="h-8 text-destructive"
-            disabled={busy !== null}
-            onClick={(e) => void remove(e)}
-          >
-            {busy === "delete" ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Trash2 className="h-3.5 w-3.5" />
-            )}
           </Button>
         </div>
       ) : null}

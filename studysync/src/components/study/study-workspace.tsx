@@ -333,6 +333,21 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
                     </Button>
                   </>
                 )}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-destructive"
+                  disabled={lifecycleBusy !== null}
+                  onClick={() => void deleteStudy()}
+                >
+                  {lifecycleBusy === "delete" ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                  Delete
+                </Button>
               </>
             ) : null}
           </div>
