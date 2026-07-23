@@ -9,10 +9,15 @@ import {
   normalizeSourceText,
 } from "@/lib/ai/generate";
 import {
+  defaultFlashcardDifficulty,
+  isLearnerBand,
+  normalizeLearningNeeds,
+} from "@/lib/learner/bands";
+import {
   inferContentTypeFromFilename,
   resolveStudyFilePaths,
 } from "@/lib/studies/files";
-import type { ContentType } from "@/types/database";
+import type { ContentType, LearnerBand } from "@/types/database";
 import { contentKey } from "@/lib/classes/deck-sync";
 
 export const maxDuration = 300;
@@ -132,6 +137,21 @@ export async function POST(request: Request) {
 
     await setProgress(admin, study_id, 55, { transcript_text: sourceText });
 
+    const { data: learnerProfile } = await admin
+      .from("profiles")
+      .select("learner_band, learning_needs")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    const learnerBand: LearnerBand | null = isLearnerBand(
+      learnerProfile?.learner_band
+    )
+      ? learnerProfile.learner_band
+      : null;
+    const learningNeeds = normalizeLearningNeeds(
+      learnerProfile?.learning_needs
+    );
+
     const materials = process.env.OPENAI_API_KEY
       ? await generateStudyMaterials({
           sourceText,
@@ -139,6 +159,8 @@ export async function POST(request: Request) {
           quizCount: study.quiz_count ?? 10,
           detailLevel: study.detail_level,
           contentType: study.content_type,
+          learnerBand,
+          simplifiedLanguage: learningNeeds.simplified_language,
         })
       : generateMockMaterials({
           sourceText,
@@ -162,12 +184,14 @@ export async function POST(request: Request) {
 
     if (notesError) throw new Error(notesError.message);
 
+    const cardDifficulty = defaultFlashcardDifficulty(learnerBand);
+
     const { error: flashError } = await admin.from("flashcards").insert(
       materials.flashcards.map((card, index) => ({
         study_id,
         question: card.question,
         answer: card.answer,
-        difficulty: "medium" as const,
+        difficulty: cardDifficulty,
         position: index,
         content_key: contentKey(card.question),
         ease: 2.5,

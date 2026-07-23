@@ -3,6 +3,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { generateSpacedDrillScript } from "@/lib/ai/spaced-drill";
 import { synthesizeSpeech } from "@/lib/ai/generate";
+import {
+  isLearnerBand,
+  normalizeLearningNeeds,
+} from "@/lib/learner/bands";
 
 function todayUtc() {
   return new Date().toISOString().slice(0, 10);
@@ -146,13 +150,29 @@ export async function POST() {
   }
 
   try {
+    const { data: learnerProfile } = await admin
+      .from("profiles")
+      .select("learner_band, learning_needs")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    const learnerBand = isLearnerBand(learnerProfile?.learner_band)
+      ? learnerProfile.learner_band
+      : null;
+    const learningNeeds = normalizeLearningNeeds(
+      learnerProfile?.learning_needs
+    );
+
     const script = await generateSpacedDrillScript(
       cards.map((c) => ({
         question: c.question,
         answer: c.answer,
         studyTitle: titleById.get(c.study_id) ?? "Study",
       })),
-      day
+      day,
+      {
+        learnerBand,
+        simplifiedLanguage: learningNeeds.simplified_language,
+      }
     );
 
     let audioUrl: string | null = null;

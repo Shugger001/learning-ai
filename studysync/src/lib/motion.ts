@@ -1,5 +1,16 @@
 export const EASE = [0.22, 1, 0.36, 1] as const;
 
+export function motionDuration(seconds = 0.5) {
+  if (
+    typeof window !== "undefined" &&
+    (document.documentElement.classList.contains("learner-reduced-motion") ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+  ) {
+    return 0.01;
+  }
+  return seconds;
+}
+
 export const fadeUp = {
   initial: { opacity: 0, y: 16 },
   animate: { opacity: 1, y: 0 },

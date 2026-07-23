@@ -202,3 +202,56 @@
   stroke: hsl(var(--primary)) !important;
   stroke-width: 2.5px;
 }
+
+/* Learner accessibility prefs (set via data-needs / classes on <html>) */
+html.learner-dyslexia body,
+html.learner-dyslexia {
+  font-family: var(--font-readable), var(--font-body), system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  word-spacing: 0.08em;
+  line-height: 1.75;
+}
+
+html.learner-dyslexia h1,
+html.learner-dyslexia h2,
+html.learner-dyslexia h3,
+html.learner-dyslexia .font-display {
+  font-family: var(--font-readable), var(--font-display), system-ui, sans-serif;
+  letter-spacing: 0.02em;
+  line-height: 1.35;
+}
+
+html.learner-focus button,
+html.learner-focus a,
+html.learner-focus [role="button"] {
+  min-height: 2.75rem;
+}
+
+html.learner-focus .page-kicker,
+html.learner-focus [data-chrome="dense"] {
+  display: none;
+}
+
+html.learner-focus .dashboard-shell main {
+  max-width: 42rem;
+}
+
+html.learner-reduced-motion *,
+html.learner-reduced-motion *::before,
+html.learner-reduced-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

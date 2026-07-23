@@ -4,6 +4,10 @@ import { apiError, apiSuccess } from "@/lib/api/response";
 import { chatMessageSchema } from "@/lib/validations/study";
 import { streamChatAboutStudy } from "@/lib/ai/generate";
 import { FREE_LIMITS, ensureUsagePeriod, isPro } from "@/lib/billing/limits";
+import {
+  isLearnerBand,
+  normalizeLearningNeeds,
+} from "@/lib/learner/bands";
 
 async function buildWeakContext(
   studyId: string,
@@ -125,7 +129,7 @@ export async function POST(request: Request) {
 
   const profileSelect = await admin
     .from("profiles")
-    .select("plan, chat_used, usage_reset_at")
+    .select("plan, chat_used, usage_reset_at, learner_band, learning_needs")
     .eq("user_id", user.id)
     .single();
 
@@ -133,8 +137,13 @@ export async function POST(request: Request) {
     plan: string | null;
     chat_used: number | null;
     usage_reset_at?: string | null;
+    learner_band?: string | null;
+    learning_needs?: unknown;
   } | null;
-  if (profileSelect.error?.message?.includes("usage_reset_at")) {
+  if (
+    profileSelect.error?.message?.includes("usage_reset_at") ||
+    profileSelect.error?.message?.includes("learner_band")
+  ) {
     const fallback = await admin
       .from("profiles")
       .select("plan, chat_used")
@@ -189,12 +198,19 @@ export async function POST(request: Request) {
       content: h.content,
     }));
 
+  const learnerBand = isLearnerBand(rawProfile?.learner_band)
+    ? rawProfile.learner_band
+    : null;
+  const learningNeeds = normalizeLearningNeeds(rawProfile?.learning_needs);
+
   const streamParams = {
     question: message,
     context,
     history: historyMsgs,
     mode: mode as "chat" | "tutor",
     weakContext,
+    learnerBand,
+    simplifiedLanguage: learningNeeds.simplified_language,
   };
 
   if (!wantsStream) {

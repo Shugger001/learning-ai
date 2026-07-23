@@ -10,6 +10,19 @@ export type FlashcardDifficulty = "easy" | "medium" | "hard";
 export type DetailLevel = "concise" | "detailed";
 export type QuizType = "mcq" | "fill_blank" | "short_answer";
 export type PlanType = "free" | "pro";
+export type LearnerBand =
+  | "elementary"
+  | "middle"
+  | "high_school"
+  | "college"
+  | "adult";
+
+export interface LearningNeeds {
+  simplified_language: boolean;
+  dyslexia_friendly: boolean;
+  focus_assist: boolean;
+  reduced_motion: boolean;
+}
 
 export interface Profile {
   id: string;
@@ -31,6 +44,9 @@ export interface Profile {
   level: number;
   progress_share_token?: string | null;
   is_admin?: boolean;
+  /** Self-selected education band for AI tone (not XP level). */
+  learner_band?: LearnerBand | null;
+  learning_needs?: LearningNeeds | Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 }

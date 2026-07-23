@@ -1,5 +1,7 @@
 import OpenAI from "openai";
 import { normalizeSourceText } from "@/lib/ai/generate";
+import { learnerPromptGuidance } from "@/lib/learner/bands";
+import type { LearnerBand } from "@/types/database";
 
 function getOpenAI() {
   return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -14,7 +16,11 @@ export type DrillCard = {
 /** Short spoken drill script from weak / due cards (no dual-host format). */
 export async function generateSpacedDrillScript(
   cards: DrillCard[],
-  dayLabel: string
+  dayLabel: string,
+  opts?: {
+    learnerBand?: LearnerBand | null;
+    simplifiedLanguage?: boolean;
+  }
 ) {
   const lines = cards
     .slice(0, 8)
@@ -34,6 +40,11 @@ export async function generateSpacedDrillScript(
     return `StudySync spaced drill for ${dayLabel}. ${parts.join(" ")} Keep going — small reps win.`;
   }
 
+  const audience = learnerPromptGuidance({
+    band: opts?.learnerBand,
+    simplifiedLanguage: opts?.simplifiedLanguage,
+  });
+
   const openai = getOpenAI();
   const completion = await openai.chat.completions.create({
     model: "gpt-4o-mini",
@@ -41,8 +52,7 @@ export async function generateSpacedDrillScript(
     messages: [
       {
         role: "system",
-        content:
-          "You write a 60–90 second spoken study drill for text-to-speech. Single narrator. Include brief pauses written as the word Pause. For each card: state the study name, ask the question, say Pause, then give a concise answer. Warm, clear, under 450 words. No markdown.",
+        content: `You write a 60–90 second spoken study drill for text-to-speech. ${audience} Single narrator. Include brief pauses written as the word Pause. For each card: state the study name, ask the question, say Pause, then give a concise answer. Warm, clear, under 450 words. No markdown.`,
       },
       {
         role: "user",

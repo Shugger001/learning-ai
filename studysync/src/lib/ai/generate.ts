@@ -1,6 +1,7 @@
 import OpenAI, { toFile } from "openai";
 import { z } from "zod";
-import type { DetailLevel, MindMapNode } from "@/types/database";
+import type { DetailLevel, LearnerBand, MindMapNode } from "@/types/database";
+import { learnerPromptGuidance } from "@/lib/learner/bands";
 
 const flashcardSchema = z.object({
   question: z.string(),
@@ -122,6 +123,8 @@ export async function generateStudyMaterials(params: {
   quizCount: number;
   detailLevel: DetailLevel;
   contentType: string;
+  learnerBand?: LearnerBand | null;
+  simplifiedLanguage?: boolean;
 }): Promise<GeneratedMaterials> {
   const openai = getOpenAI();
   const quizCount = Math.min(30, Math.max(1, params.quizCount));
@@ -135,6 +138,11 @@ export async function generateStudyMaterials(params: {
     : params.detailLevel === "concise"
       ? "Keep notes concise: short bullets, high-signal only."
       : "Write detailed, well-structured study notes with clear headings, short paragraphs, examples, and key definitions.";
+
+  const audienceGuidance = learnerPromptGuidance({
+    band: params.learnerBand,
+    simplifiedLanguage: params.simplifiedLanguage,
+  });
 
   const sparseRules = sparse
     ? `
@@ -153,6 +161,7 @@ export async function generateStudyMaterials(params: {
       {
         role: "system",
         content: `You are StudySync, an expert study-material generator.
+${audienceGuidance}
 Return ONLY valid JSON matching this shape:
 {
   "title": string,
@@ -515,6 +524,8 @@ export async function* streamChatAboutStudy(params: {
   history: { role: "user" | "assistant"; content: string }[];
   mode?: "chat" | "tutor";
   weakContext?: string;
+  learnerBand?: LearnerBand | null;
+  simplifiedLanguage?: boolean;
 }): AsyncGenerator<string> {
   if (!process.env.OPENAI_API_KEY) {
     const mock =
@@ -530,9 +541,13 @@ export async function* streamChatAboutStudy(params: {
 
   const openai = getOpenAI();
   const isTutor = params.mode === "tutor";
+  const audience = learnerPromptGuidance({
+    band: params.learnerBand,
+    simplifiedLanguage: params.simplifiedLanguage,
+  });
   const system = isTutor
-    ? `You are StudySync Tutor in Socratic mode. Guide the learner with short questions—do not dump full answers unless they ask or are clearly stuck after 2+ turns. Prefer one focused question at a time. Use ONLY the study materials and weak-spot context below. When quizzing, wait for their answer before revealing. Use markdown sparingly.\n\nMATERIALS:\n${params.context.slice(0, 70_000)}\n\nWEAK SPOTS:\n${(params.weakContext || "None listed.").slice(0, 8_000)}`
-    : `You are StudySync Tutor. Answer ONLY using the study materials below. Be clear and concise. Use markdown when helpful.\n\nMATERIALS:\n${params.context.slice(0, 80_000)}`;
+    ? `You are StudySync Tutor in Socratic mode. ${audience} Guide the learner with short questions—do not dump full answers unless they ask or are clearly stuck after 2+ turns. Prefer one focused question at a time. Use ONLY the study materials and weak-spot context below. When quizzing, wait for their answer before revealing. Use markdown sparingly.\n\nMATERIALS:\n${params.context.slice(0, 70_000)}\n\nWEAK SPOTS:\n${(params.weakContext || "None listed.").slice(0, 8_000)}`
+    : `You are StudySync Tutor. ${audience} Answer ONLY using the study materials below. Be clear and concise. Use markdown when helpful.\n\nMATERIALS:\n${params.context.slice(0, 80_000)}`;
 
   const stream = await openai.chat.completions.create({
     model: "gpt-4o-mini",

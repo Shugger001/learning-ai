@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
-import { Bricolage_Grotesque, Source_Sans_3 } from "next/font/google";
+import {
+  Atkinson_Hyperlegible,
+  Bricolage_Grotesque,
+  Source_Sans_3,
+} from "next/font/google";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { LearnerPrefsProvider } from "@/components/providers/learner-prefs-provider";
 import { ToastProvider } from "@/components/ui/toast";
 import { RegisterServiceWorker } from "@/components/pwa/register-sw";
 import "./globals.css";
@@ -15,6 +20,13 @@ const body = Source_Sans_3({
 const display = Bricolage_Grotesque({
   subsets: ["latin"],
   variable: "--font-display",
+  display: "swap",
+});
+
+const readable = Atkinson_Hyperlegible({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  variable: "--font-readable",
   display: "swap",
 });
 
@@ -49,13 +61,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${body.variable} ${display.variable} font-sans antialiased`}>
+      <body
+        className={`${body.variable} ${display.variable} ${readable.variable} font-sans antialiased`}
+      >
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <QueryProvider>
-            <ToastProvider>
-              {children}
-              <RegisterServiceWorker />
-            </ToastProvider>
+            <LearnerPrefsProvider>
+              <ToastProvider>
+                {children}
+                <RegisterServiceWorker />
+              </ToastProvider>
+            </LearnerPrefsProvider>
           </QueryProvider>
         </ThemeProvider>
       </body>

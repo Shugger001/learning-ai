@@ -11,6 +11,7 @@ import { heatColor } from "@/lib/progress/mastery";
 import { cn } from "@/lib/utils/cn";
 import type { ApiResponse } from "@/types/api";
 import type { EmailPreferences, SpacedEpisode } from "@/types/database";
+import { LearningProfileCard } from "@/components/progress/learning-profile-card";
 
 export interface ProgressPayload {
   streak: {
@@ -444,6 +445,8 @@ export function ProgressClient({ data }: { data: ProgressPayload }) {
           {shareMessage}
         </p>
       ) : null}
+
+      <LearningProfileCard />
 
       <div className="flex flex-wrap items-center justify-between gap-3 border border-border/70 bg-card/40 px-4 py-3">
         <div>

@@ -22,7 +22,7 @@ export default async function DashboardPage() {
     supabase
       .from("profiles")
       .select(
-        "full_name, plan, uploads_used, chat_used, podcasts_used, usage_reset_at, onboarding_completed, xp, level"
+        "full_name, plan, uploads_used, chat_used, podcasts_used, usage_reset_at, onboarding_completed, xp, level, learner_band"
       )
       .eq("user_id", user!.id)
       .single(),
@@ -44,19 +44,36 @@ export default async function DashboardPage() {
     onboarding_completed?: boolean | null;
     xp?: number | null;
     level?: number | null;
+    learner_band?: string | null;
   } | null;
   if (
     profileRes.error?.message?.includes("usage_reset_at") ||
     profileRes.error?.message?.includes("onboarding_completed") ||
     profileRes.error?.message?.includes("xp") ||
-    profileRes.error?.message?.includes("level")
+    profileRes.error?.message?.includes("level") ||
+    profileRes.error?.message?.includes("learner_band")
   ) {
     const fallback = await supabase
       .from("profiles")
-      .select("full_name, plan, uploads_used, chat_used, podcasts_used")
+      .select("full_name, plan, uploads_used, chat_used, podcasts_used, onboarding_completed, xp, level")
       .eq("user_id", user!.id)
       .single();
-    profile = fallback.data;
+    profile = fallback.data
+      ? { ...fallback.data, learner_band: null }
+      : null;
+    if (
+      fallback.error?.message?.includes("onboarding_completed") ||
+      fallback.error?.message?.includes("xp")
+    ) {
+      const basic = await supabase
+        .from("profiles")
+        .select("full_name, plan, uploads_used, chat_used, podcasts_used")
+        .eq("user_id", user!.id)
+        .single();
+      profile = basic.data
+        ? { ...basic.data, learner_band: null }
+        : null;
+    }
   }
 
   const studyRows = ((studies as Study[]) ?? []).map((s) => ({
@@ -96,6 +113,19 @@ export default async function DashboardPage() {
       ? studyRows.length > 0
       : Boolean(profile?.onboarding_completed);
 
+  const learnerBandRaw = profile?.learner_band;
+  const learnerBand =
+    learnerBandRaw === "elementary" ||
+    learnerBandRaw === "middle" ||
+    learnerBandRaw === "high_school" ||
+    learnerBandRaw === "college" ||
+    learnerBandRaw === "adult"
+      ? learnerBandRaw
+      : null;
+  const needsLearnerSetup =
+    !profileRes.error?.message?.includes("learner_band") &&
+    learnerBand === null;
+
   return (
     <Suspense fallback={<div className="text-sm text-muted-foreground">Loading…</div>}>
       <DashboardClient
@@ -107,6 +137,8 @@ export default async function DashboardPage() {
         usage={usage}
         userName={userName}
         onboardingCompleted={onboardingCompleted}
+        learnerBand={learnerBand}
+        needsLearnerSetup={needsLearnerSetup}
         xp={Number(profile?.xp ?? 0)}
         level={Number(profile?.level ?? 1)}
       />

@@ -112,6 +112,7 @@ export function NewStudyModal({
   const [flashcardCount, setFlashcardCount] = useState<10 | 20 | 50>(20);
   const [quizCount, setQuizCount] = useState<5 | 10 | 15 | 20>(10);
   const [detailLevel, setDetailLevel] = useState<DetailLevel>("detailed");
+  const [detailTouched, setDetailTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recording, setRecording] = useState(false);
@@ -126,6 +127,24 @@ export function NewStudyModal({
       setError(null);
     }
   }, [open, initialContentType]);
+
+  useEffect(() => {
+    if (!open || detailTouched) return;
+    void fetch("/api/settings/learner-profile")
+      .then((r) => r.json())
+      .then(
+        (json: ApiResponse<{ learner_band: string | null }>) => {
+          if (!json.success) return;
+          const band = json.data.learner_band;
+          if (band === "elementary" || band === "middle") {
+            setDetailLevel("concise");
+          } else if (band) {
+            setDetailLevel("detailed");
+          }
+        }
+      )
+      .catch(() => undefined);
+  }, [open, detailTouched]);
 
   const accept = useMemo(() => {
     const match = CONTENT_TYPES.find((c) => c.type === contentType);
@@ -731,7 +750,10 @@ export function NewStudyModal({
                     variant={detailLevel === level ? "default" : "outline"}
                     size="sm"
                     className="capitalize"
-                    onClick={() => setDetailLevel(level)}
+                    onClick={() => {
+                      setDetailTouched(true);
+                      setDetailLevel(level);
+                    }}
                   >
                     {level}
                   </Button>

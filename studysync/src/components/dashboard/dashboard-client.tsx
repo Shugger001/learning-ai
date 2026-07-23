@@ -20,6 +20,7 @@ import { NewStudyModal } from "@/components/upload/new-study-modal";
 import { StudyCard } from "@/components/dashboard/study-card";
 import { FolderBar } from "@/components/dashboard/folder-bar";
 import { FirstRunTour } from "@/components/onboarding/first-run-tour";
+import { LearnerProfilePrompt } from "@/components/onboarding/learner-profile-prompt";
 import { DailyGoalCard } from "@/components/goals/daily-goal-card";
 import { HabitStrip } from "@/components/dashboard/habit-strip";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ import type { ApiResponse } from "@/types/api";
 import type {
   ContentType,
   Folder,
+  LearnerBand,
   PlanType,
   Study,
 } from "@/types/database";
@@ -52,6 +54,10 @@ interface DashboardClientProps {
   usage: UsageRemaining | null;
   userName?: string | null;
   onboardingCompleted?: boolean;
+  /** null = not set yet */
+  learnerBand?: LearnerBand | null;
+  /** Show one-time prompt when onboarding done but band unset (column exists). */
+  needsLearnerSetup?: boolean;
   xp?: number;
   level?: number;
 }
@@ -120,6 +126,8 @@ export function DashboardClient({
   usage,
   userName,
   onboardingCompleted = true,
+  learnerBand = null,
+  needsLearnerSetup = false,
   xp = 0,
   level = 1,
 }: DashboardClientProps) {
@@ -136,6 +144,9 @@ export function DashboardClient({
   const [dueCount, setDueCount] = useState(dueToday);
   const [tipIndex, setTipIndex] = useState(0);
   const [tourOpen, setTourOpen] = useState(!onboardingCompleted);
+  const [learnerPromptOpen, setLearnerPromptOpen] = useState(
+    Boolean(onboardingCompleted && needsLearnerSetup && !learnerBand)
+  );
 
   const firstName = userName?.trim().split(/\s+/)[0] || null;
 
@@ -779,6 +790,12 @@ export function DashboardClient({
         onSampleStarted={(study) =>
           setStudies((prev) => [study, ...prev.filter((s) => s.id !== study.id)])
         }
+        onLearnerSaved={() => setLearnerPromptOpen(false)}
+      />
+      <LearnerProfilePrompt
+        open={!tourOpen && learnerPromptOpen}
+        onClose={() => setLearnerPromptOpen(false)}
+        onSaved={() => setLearnerPromptOpen(false)}
       />
     </>
   );
