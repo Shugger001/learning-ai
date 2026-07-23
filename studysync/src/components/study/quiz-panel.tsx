@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { ProcessingBar } from "@/components/ui/processing-bar";
 import { MarkdownMath } from "@/components/ui/markdown-math";
 import { useToast } from "@/components/ui/toast";
-import { polishDirectQuestion } from "@/lib/ai/polish-questions";
+import { polishDirectQuestion, polishMcqOption, isPlaceholderMcq } from "@/lib/ai/polish-questions";
 import type { ApiResponse } from "@/types/api";
 import type { Quiz, QuizAttempt, QuizType } from "@/types/database";
 
@@ -446,6 +446,21 @@ export function QuizPanel({
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
+      {!readOnly &&
+      queue.some((q) => isPlaceholderMcq(q)) ? (
+        <div className="rounded-md border border-border/70 bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+          Some questions still look like placeholders. Use{" "}
+          <button
+            type="button"
+            className="font-medium text-foreground underline-offset-2 hover:underline"
+            disabled={loading}
+            onClick={() => void generateMore()}
+          >
+            Generate practice
+          </button>{" "}
+          for direct content questions.
+        </div>
+      ) : null}
       {examMode ? (
         <div className="flex flex-wrap items-center justify-between gap-2 border border-border/70 bg-muted/30 px-3 py-2 text-sm">
           <span className="font-medium">Exam mode</span>
@@ -515,6 +530,7 @@ export function QuizPanel({
           {type === "mcq" ? (
             <ul className="space-y-2" role="listbox" aria-label="Answer choices">
               {options.map((option) => {
+                const label = polishMcqOption(option);
                 const chosen = selected === option;
                 const showCorrect =
                   !examMode && answered && option === quiz.correct_answer;
@@ -555,7 +571,7 @@ export function QuizPanel({
                           "border-destructive bg-destructive/15 text-foreground"
                       )}
                     >
-                      <MarkdownMath inline>{option}</MarkdownMath>
+                      <MarkdownMath inline>{label}</MarkdownMath>
                     </motion.button>
                   </li>
                 );

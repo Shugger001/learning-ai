@@ -292,6 +292,7 @@ export function generateMockMaterials(params: {
 
   const quizzes = Array.from({ length: quizCount }, (_, i) => {
     const section = slides[i % Math.max(slides.length, 1)];
+    const other = slides[(i + 1) % Math.max(slides.length, 1)];
     const focus = (section?.heading ?? `concept ${i + 1}`).replace(
       /^slide\s+\d+\s*[:.-]?\s*/i,
       ""
@@ -321,9 +322,10 @@ export function generateMockMaterials(params: {
       question: `Which statement about ${focus} is most accurate?`,
       options: [
         snippet || `A correct point about ${focus}`,
-        "An unrelated detail not covered in the material",
-        "A contradiction of the lecture content",
-        "None of the above",
+        other?.body.replace(/\s+/g, " ").trim().slice(0, 80) ||
+          `A detail from ${other?.heading ?? "another section"}`,
+        `A claim that reverses the meaning of ${focus}`,
+        "Not stated in the material",
       ],
       correct_answer: snippet || `A correct point about ${focus}`,
       explanation: `This checks understanding of ${focus}.`,
