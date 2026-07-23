@@ -6,6 +6,7 @@ import {
   polishDirectQuestion,
   polishGeneratedMaterials,
 } from "@/lib/ai/polish-questions";
+import { polishNotesMarkdown, polishSummary } from "@/lib/ai/polish-notes";
 
 export { polishDirectQuestion, polishGeneratedMaterials } from "@/lib/ai/polish-questions";
 
@@ -139,11 +140,11 @@ export async function generateStudyMaterials(params: {
 
   const notesGuidance = sparse
     ? params.detailLevel === "concise"
-      ? "Source is a sparse slide deck. Expand each slide into a short study section (3–6 bullets or 2–3 sentences): define terms, spell out abbreviations, and state why the point matters. Never leave a slide as a one-line echo."
-      : "Source is a sparse slide deck. Expand EVERY slide into a full study section with heading, definitions, explanations, and how ideas connect. Turn bullet fragments into teachable prose a student could study without the original slides. Do not invent unrelated topics, but DO elaborate on what the bullets imply."
+      ? "Source is a sparse slide deck. Expand each idea into a short study section (3–6 bullets or 2–3 sentences): define terms, spell out abbreviations, and state why it matters. Never leave an idea as a one-line echo."
+      : "Source is a sparse slide deck. Expand EVERY idea into a full study section with a clear topical heading, definitions, explanations, and how ideas connect. Turn bullet fragments into teachable prose a student could study without the original slides. Do not invent unrelated topics, but DO elaborate on what the bullets imply."
     : params.detailLevel === "concise"
-      ? "Keep notes concise: short bullets, high-signal only."
-      : "Write detailed, well-structured study notes with clear headings, short paragraphs, examples, and key definitions.";
+      ? "Keep notes concise: short sections, high-signal bullets, and one clear takeaway per topic."
+      : "Write detailed, well-structured study notes with clear topical headings, short paragraphs, examples, and key definitions — like a friendly study guide, not a dump of the source.";
 
   const audienceGuidance = learnerPromptGuidance({
     band: params.learnerBand,
@@ -153,10 +154,10 @@ export async function generateStudyMaterials(params: {
   const sparseRules = sparse
     ? `
 - CRITICAL: The source is thin slide text. Your notes and summary must be SUBSTANTIALLY longer and richer than the source — teach the material, do not mirror blank bullets.
-- For each "## Slide N" section that has real content, produce a matching ## Notes section that explains it.
-- If a slide says "(No extractable text — likely image-heavy)", note that briefly and move on; do not invent fake content for it.
-- Summary: 3–5 full sentences covering the arc of the deck.
-- Notes target length: roughly 80–150 words per contentful slide (or ~400+ words total for short decks).`
+- Use topical ## headings (e.g. "## Photosynthesis basics"), NEVER "## Slide 1" or slide numbers.
+- If a slide says "(No extractable text — likely image-heavy)", skip it briefly; do not invent fake content for it.
+- Summary: 3–5 encouraging full sentences covering the arc of the material.
+- Notes target length: roughly 80–150 words per contentful topic (or ~400+ words total for short decks).`
     : "";
 
   const completion = await openai.chat.completions.create({
@@ -166,7 +167,7 @@ export async function generateStudyMaterials(params: {
     messages: [
       {
         role: "system",
-        content: `You are StudySync, an expert study-material generator.
+        content: `You are StudySync, a warm expert study coach who writes notes students want to open.
 ${audienceGuidance}
 Return ONLY valid JSON matching this shape:
 {
@@ -189,9 +190,12 @@ Rules:
 - For fill_blank: options can be []; write a natural sentence with "____" where the answer goes (e.g. "Photosynthesis occurs in the ____."); correct_answer is the missing word/phrase.
 - For short_answer: options can be []; ask a concrete question; correct_answer is a concise model answer.
 - ${notesGuidance}
-- Notes MUST use proper markdown: # / ## headings, bullet lists, and short paragraphs - never one word per line.
+- Notes MUST use proper markdown: # title, ## topical sections, short paragraphs, and bullet lists — never one word per line, never walls of unbroken text.
+- Notes tone: clear, calm, encouraging. Prefer "Here's the idea" over dense academic jargon (unless college/adult band).
+- Start notes with a short "# Overview" then ## sections. End important sections with a bold **Remember:** one-liner when helpful.
+- NEVER title sections "Slide 1", "Slide 2", etc. Use the actual topic name.
 - Rewrite slide fragments into coherent study prose; do not dump raw OCR/slide text.
-- Summary must be a readable paragraph (not fragmented lines).
+- Summary must be a readable, motivating paragraph (not fragmented lines).
 - Mind map should be hierarchical with 1 root and 2–3 depth levels.
 - Stay faithful to the source topics and terminology; do not invent unrelated facts.${sparseRules}`,
       },
@@ -219,9 +223,10 @@ Rules:
     });
     return polishGeneratedMaterials({
       ...parsed,
-      summary:
-        parsed.summary?.trim().length > 40 ? parsed.summary : fallback.summary,
-      notes: fallback.notes,
+      summary: polishSummary(
+        parsed.summary?.trim().length > 40 ? parsed.summary : fallback.summary
+      ),
+      notes: polishNotesMarkdown(fallback.notes),
       mind_map: parsed.mind_map?.name ? parsed.mind_map : fallback.mind_map,
       flashcards:
         parsed.flashcards?.length > 0 ? parsed.flashcards : fallback.flashcards,
@@ -229,7 +234,11 @@ Rules:
     });
   }
 
-  return polishGeneratedMaterials(parsed);
+  return polishGeneratedMaterials({
+    ...parsed,
+    summary: polishSummary(parsed.summary),
+    notes: polishNotesMarkdown(parsed.notes),
+  });
 }
 
 /** Deterministic fallback when OPENAI_API_KEY is missing (local demos). */

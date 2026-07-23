@@ -37,6 +37,7 @@ import { MarkdownMath } from "@/components/ui/markdown-math";
 import { cn } from "@/lib/utils/cn";
 import { fadeUp } from "@/lib/motion";
 import { exportNotesMarkdown, exportNotesPdf } from "@/lib/export/pack";
+import { polishNotesMarkdown, polishSummary } from "@/lib/ai/polish-notes";
 import { useNotesPresence } from "@/hooks/use-notes-presence";
 import { createClient } from "@/lib/supabase/client";
 import type { ApiResponse } from "@/types/api";
@@ -48,8 +49,10 @@ interface NotesPanelProps {
 }
 
 export function NotesPanel({ note, studyId }: NotesPanelProps) {
-  const [content, setContent] = useState(note?.content ?? "");
-  const [summary, setSummary] = useState(note?.summary ?? "");
+  const [content, setContent] = useState(
+    polishNotesMarkdown(note?.content ?? "")
+  );
+  const [summary, setSummary] = useState(polishSummary(note?.summary ?? ""));
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -64,8 +67,8 @@ export function NotesPanel({ note, studyId }: NotesPanelProps) {
   // Keep local state in sync when the study note identity changes (retry / refresh).
   // Do not depend on content/summary strings alone — that fights live edits & autosave.
   useEffect(() => {
-    setContent(note?.content ?? "");
-    setSummary(note?.summary ?? "");
+    setContent(polishNotesMarkdown(note?.content ?? ""));
+    setSummary(polishSummary(note?.summary ?? ""));
     setEditing(false);
   }, [note?.id]);
 
@@ -104,7 +107,7 @@ export function NotesPanel({ note, studyId }: NotesPanelProps) {
       editorProps: {
         attributes: {
           class:
-            "min-h-[320px] bg-card px-4 py-3 text-[15px] leading-relaxed focus:outline-none prose prose-sm max-w-none dark:prose-invert",
+            "min-h-[320px] bg-card px-5 py-4 text-[16px] leading-[1.75] focus:outline-none prose prose-sm max-w-none dark:prose-invert",
         },
       },
     },
@@ -152,9 +155,15 @@ export function NotesPanel({ note, studyId }: NotesPanelProps) {
 
   if (!note) {
     return (
-      <motion.p className="text-sm text-muted-foreground" {...fadeUp}>
-        No notes generated yet.
-      </motion.p>
+      <motion.div className="space-y-3 py-8 text-center" {...fadeUp}>
+        <p className="font-display text-lg font-semibold tracking-tight">
+          Notes are on the way
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Once this study finishes processing, your study guide will show up
+          here.
+        </p>
+      </motion.div>
     );
   }
 
@@ -177,14 +186,14 @@ export function NotesPanel({ note, studyId }: NotesPanelProps) {
     content !== (note.content ?? "") || summary !== (note.summary ?? "");
 
   return (
-    <motion.div className="space-y-6" {...fadeUp}>
+    <motion.div className="space-y-8" {...fadeUp}>
       {others.length > 0 ? (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-muted-foreground">Live</span>
+          <span className="text-xs text-muted-foreground">Studying together</span>
           {others.map((p) => (
             <span
               key={p.id}
-              className="inline-flex items-center gap-1.5 border border-border/70 px-2 py-0.5 text-xs"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border/70 px-2.5 py-0.5 text-xs"
               title={p.editing ? "Editing" : "Viewing"}
             >
               <span
@@ -198,99 +207,136 @@ export function NotesPanel({ note, studyId }: NotesPanelProps) {
           ))}
         </div>
       ) : null}
-      <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => setEditing((v) => !v)}
-        >
-          {editing ? <Eye className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
-          {editing ? "Preview" : "Edit"}
-        </Button>
-        {editing || dirty ? (
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="page-kicker">Study guide</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Skim the overview, then dig into each section.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
           <Button
             type="button"
+            variant="outline"
             size="sm"
-            onClick={() => void saveNote(content, summary)}
-            disabled={saving}
+            onClick={() => setEditing((v) => !v)}
           >
-            <Save className="h-4 w-4" />
-            {saving ? "Saving…" : "Save"}
+            {editing ? (
+              <Eye className="h-4 w-4" />
+            ) : (
+              <Pencil className="h-4 w-4" />
+            )}
+            {editing ? "Preview" : "Edit"}
           </Button>
-        ) : null}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button type="button" variant="ghost" size="sm">
-              Export
-              <ChevronDown className="h-3.5 w-3.5" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuItem
-              className="cursor-pointer"
-              onClick={() => void copyAll()}
+          {editing || dirty ? (
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => void saveNote(content, summary)}
+              disabled={saving}
             >
-              {copied ? (
-                <Check className="mr-2 h-4 w-4" />
-              ) : (
-                <Copy className="mr-2 h-4 w-4" />
-              )}
-              {copied ? "Copied" : "Copy all"}
-            </DropdownMenuItem>
-            <DropdownMenuItem className="cursor-pointer" onClick={exportMarkdown}>
-              <Download className="mr-2 h-4 w-4" />
-              Markdown
-            </DropdownMenuItem>
-            <DropdownMenuItem className="cursor-pointer" onClick={exportPdf}>
-              <Download className="mr-2 h-4 w-4" />
-              PDF
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <Save className="h-4 w-4" />
+              {saving ? "Saving…" : "Save"}
+            </Button>
+          ) : null}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="ghost" size="sm">
+                Export
+                <ChevronDown className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                className="cursor-pointer"
+                onClick={() => void copyAll()}
+              >
+                {copied ? (
+                  <Check className="mr-2 h-4 w-4" />
+                ) : (
+                  <Copy className="mr-2 h-4 w-4" />
+                )}
+                {copied ? "Copied" : "Copy all"}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="cursor-pointer"
+                onClick={exportMarkdown}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Markdown
+              </DropdownMenuItem>
+              <DropdownMenuItem className="cursor-pointer" onClick={exportPdf}>
+                <Download className="mr-2 h-4 w-4" />
+                PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
-      <section className="space-y-2">
-        <h2 className="text-sm font-medium text-muted-foreground">Summary</h2>
+      <section className="overflow-hidden rounded-2xl border border-signal/25 bg-gradient-to-br from-[hsl(var(--signal)/0.12)] via-card to-card shadow-soft">
+        <div className="border-b border-signal/15 px-5 py-3 sm:px-6">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary/80">
+            Big picture
+          </p>
+        </div>
         {editing ? (
-          <Textarea
-            value={summary}
-            onChange={(e) => setSummary(e.target.value)}
-            className="min-h-[100px]"
-            aria-label="Summary notes"
-          />
+          <div className="px-5 py-4 sm:px-6">
+            <Textarea
+              value={summary}
+              onChange={(e) => setSummary(e.target.value)}
+              className="min-h-[110px] border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+              aria-label="Summary notes"
+            />
+          </div>
         ) : (
-          <div className="rounded-lg border border-border/60 bg-muted/30 px-4 py-3">
-            <MarkdownMath className="text-[15px] text-foreground/90">
-              {summary || "No summary yet."}
+          <div className="px-5 py-5 sm:px-6 sm:py-6">
+            <MarkdownMath className="text-[16px] leading-[1.7] text-foreground/95 [&_p]:my-0">
+              {summary || "No summary yet — open Edit to add one."}
             </MarkdownMath>
           </div>
         )}
       </section>
 
-      <section className="space-y-2">
-        <h2 className="text-sm font-medium text-muted-foreground">Notes</h2>
+      <section className="space-y-3">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <h2 className="font-display text-xl font-semibold tracking-tight">
+              Your notes
+            </h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Read section by section — short and clear beats dense.
+            </p>
+          </div>
+        </div>
         {editing ? (
-          <div className="overflow-hidden rounded-lg border border-border/60">
+          <div className="overflow-hidden rounded-2xl border border-border/60 shadow-soft">
             <NotesToolbar editor={editor} />
             <EditorContent editor={editor} />
           </div>
         ) : (
           <article
             className={cn(
-              "rounded-lg border border-border/60 bg-card px-5 py-6 text-[15px] leading-relaxed",
-              "[&_h1]:mb-3 [&_h1]:mt-0 [&_h1]:text-2xl [&_h1]:font-semibold [&_h1]:tracking-tight",
-              "[&_h2]:mb-2 [&_h2]:mt-6 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:tracking-tight",
-              "[&_h3]:mb-2 [&_h3]:mt-5 [&_h3]:text-lg [&_h3]:font-semibold",
-              "[&_p]:my-3 [&_p]:leading-relaxed [&_p]:text-foreground/90",
-              "[&_ul]:my-3 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5",
-              "[&_ol]:my-3 [&_ol]:list-decimal [&_ol]:space-y-1.5 [&_ol]:pl-5",
-              "[&_li]:leading-relaxed [&_strong]:font-semibold",
-              "[&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-4 [&_blockquote]:italic",
-              "[&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-sm"
+              "notes-sheet rounded-2xl border border-border/60 bg-card/95 px-5 py-7 shadow-soft sm:px-8 sm:py-9",
+              "text-[16px] leading-[1.75] text-foreground/90",
+              "[&_h1]:mb-4 [&_h1]:mt-0 [&_h1]:font-display [&_h1]:text-[1.65rem] [&_h1]:font-semibold [&_h1]:tracking-tight [&_h1]:text-foreground",
+              "[&_h2]:mb-3 [&_h2]:mt-9 [&_h2]:border-t [&_h2]:border-border/50 [&_h2]:pt-6 [&_h2]:font-display [&_h2]:text-[1.25rem] [&_h2]:font-semibold [&_h2]:tracking-tight [&_h2]:text-foreground",
+              "[&_h2:first-child]:mt-0 [&_h2:first-child]:border-t-0 [&_h2:first-child]:pt-0",
+              "[&_h3]:mb-2 [&_h3]:mt-6 [&_h3]:text-[1.05rem] [&_h3]:font-semibold [&_h3]:text-foreground",
+              "[&_p]:my-3.5 [&_p]:leading-[1.75]",
+              "[&_ul]:my-4 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5",
+              "[&_ol]:my-4 [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-5",
+              "[&_li]:leading-[1.65] [&_li]:marker:text-primary/70",
+              "[&_strong]:font-semibold [&_strong]:text-foreground",
+              "[&_blockquote]:my-5 [&_blockquote]:rounded-r-lg [&_blockquote]:border-l-[3px] [&_blockquote]:border-signal [&_blockquote]:bg-muted/40 [&_blockquote]:py-2 [&_blockquote]:pl-4 [&_blockquote]:pr-3 [&_blockquote]:not-italic",
+              "[&_code]:rounded-md [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-[0.9em]",
+              "[&_hr]:my-8 [&_hr]:border-border/60"
             )}
           >
-            <MarkdownMath>{content || "_No notes yet._"}</MarkdownMath>
+            <MarkdownMath>
+              {content || "_No notes yet — try Edit to start writing._"}
+            </MarkdownMath>
           </article>
         )}
       </section>
