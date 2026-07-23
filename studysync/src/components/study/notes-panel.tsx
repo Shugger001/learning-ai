@@ -61,6 +61,14 @@ export function NotesPanel({ note, studyId }: NotesPanelProps) {
   });
   const others = peers.filter((p) => p.id !== selfId);
 
+  // Keep local state in sync when the study note identity changes (retry / refresh).
+  // Do not depend on content/summary strings alone — that fights live edits & autosave.
+  useEffect(() => {
+    setContent(note?.content ?? "");
+    setSummary(note?.summary ?? "");
+    setEditing(false);
+  }, [note?.id]);
+
   const saveNote = useCallback(
     async (nextContent: string, nextSummary: string, silent = false) => {
       if (!note) return;
@@ -79,29 +87,30 @@ export function NotesPanel({ note, studyId }: NotesPanelProps) {
     [note]
   );
 
-  const editor = useEditor({
-    extensions: [
-      StarterKit.configure({
-        heading: { levels: [1, 2, 3] },
-      }),
-    ],
-    content: markdownToHtml(content),
-    editable: editing,
-    immediatelyRender: false,
-    onUpdate: ({ editor: ed }) => {
-      setContent(htmlToMarkdownish(ed.getHTML()));
-    },
-    editorProps: {
-      attributes: {
-        class:
-          "min-h-[320px] bg-card px-4 py-3 text-[15px] leading-relaxed focus:outline-none prose prose-sm max-w-none dark:prose-invert",
+  // TipTap only while editing — preview uses MarkdownMath (avoids setContent ↔ onUpdate freeze).
+  const editor = useEditor(
+    {
+      extensions: [
+        StarterKit.configure({
+          heading: { levels: [1, 2, 3] },
+        }),
+      ],
+      content: markdownToHtml(content),
+      editable: true,
+      immediatelyRender: false,
+      onUpdate: ({ editor: ed }) => {
+        setContent(htmlToMarkdownish(ed.getHTML()));
+      },
+      editorProps: {
+        attributes: {
+          class:
+            "min-h-[320px] bg-card px-4 py-3 text-[15px] leading-relaxed focus:outline-none prose prose-sm max-w-none dark:prose-invert",
+        },
       },
     },
-  });
-
-  useEffect(() => {
-    editor?.setEditable(editing);
-  }, [editing, editor]);
+    // Recreate when entering edit so HTML matches latest markdown
+    [editing]
+  );
 
   useEffect(() => {
     if (!editing || !note) return;
@@ -140,11 +149,6 @@ export function NotesPanel({ note, studyId }: NotesPanelProps) {
       void supabase.removeChannel(channel);
     };
   }, [note?.id, studyId]);
-
-  useEffect(() => {
-    if (editing || !editor) return;
-    editor.commands.setContent(markdownToHtml(content));
-  }, [content, editing, editor]);
 
   if (!note) {
     return (
@@ -199,12 +203,7 @@ export function NotesPanel({ note, studyId }: NotesPanelProps) {
           type="button"
           variant="outline"
           size="sm"
-          onClick={() => {
-            if (!editing && editor) {
-              editor.commands.setContent(markdownToHtml(content));
-            }
-            setEditing((v) => !v);
-          }}
+          onClick={() => setEditing((v) => !v)}
         >
           {editing ? <Eye className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
           {editing ? "Preview" : "Edit"}
@@ -415,24 +414,31 @@ function escapeHtml(value: string) {
 
 function markdownToHtml(md: string) {
   const escaped = escapeHtml(md);
-  return escaped
+  const withBlocks = escaped
     .replace(/^### (.+)$/gm, "<h3>$1</h3>")
     .replace(/^## (.+)$/gm, "<h2>$1</h2>")
     .replace(/^# (.+)$/gm, "<h1>$1</h1>")
-    .replace(/^\> (.+)$/gm, "<blockquote><p>$1</p></blockquote>")
-    .replace(/^\- (.+)$/gm, "<li>$1</li>")
-    .replace(/^\d+\. (.+)$/gm, "<li data-ordered=\"1\">$1</li>")
-    .replace(/(<li data-ordered=\"1\">.*<\/li>\n?)+/g, (block) =>
-      `<ol>${block.replace(/ data-ordered=\"1\"/g, "")}</ol>`
+    .replace(/^> (.+)$/gm, "<blockquote><p>$1</p></blockquote>")
+    .replace(/^- (.+)$/gm, "<li>$1</li>")
+    .replace(/^\d+\. (.+)$/gm, '<li data-ordered="1">$1</li>')
+    .replace(/(<li data-ordered="1">[\s\S]*?<\/li>\n?)+/g, (block) =>
+      `<ol>${block.replace(/ data-ordered="1"/g, "")}</ol>`
     )
-    .replace(/(<li>.*<\/li>\n?)+/g, (block) => `<ul>${block}</ul>`)
+    .replace(/(<li>[\s\S]*?<\/li>\n?)+/g, (block) => `<ul>${block}</ul>`)
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*(.+?)\*/g, "<em>$1</em>")
-    .replace(/`(.+?)`/g, "<code>$1</code>")
-    .replace(/\n\n/g, "</p><p>")
-    .replace(/^(?!<[hulob])/gm, (line) =>
-      line.startsWith("<") ? line : `<p>${line}</p>`
-    );
+    .replace(/`(.+?)`/g, "<code>$1</code>");
+
+  return withBlocks
+    .split(/\n{2,}/)
+    .map((chunk) => {
+      const trimmed = chunk.trim();
+      if (!trimmed) return "";
+      if (/^<(h[1-3]|ul|ol|blockquote)\b/i.test(trimmed)) return trimmed;
+      return `<p>${trimmed.replace(/\n/g, "<br>")}</p>`;
+    })
+    .filter(Boolean)
+    .join("");
 }
 
 function htmlToMarkdownish(html: string) {

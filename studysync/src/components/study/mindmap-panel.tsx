@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import { Download, Plus, Save } from "lucide-react";
@@ -27,37 +27,75 @@ type TreeNode = RawNodeDatum & {
   __collapsed?: boolean;
 };
 
-function ensureIds(node: MindMapNode, prefix = "n"): MindMapNode {
+const MAX_MIND_MAP_DEPTH = 6;
+const MAX_MIND_MAP_CHILDREN = 24;
+
+/** Cap depth/breadth so a bad AI tree cannot freeze react-d3-tree. */
+function sanitizeMindMap(
+  node: MindMapNode,
+  depth = 0,
+  seen = new Set<MindMapNode>()
+): MindMapNode {
+  if (seen.has(node)) {
+    return { name: node.name || "…", children: [] };
+  }
+  seen.add(node);
+  const kids =
+    depth >= MAX_MIND_MAP_DEPTH
+      ? []
+      : (node.children ?? [])
+          .slice(0, MAX_MIND_MAP_CHILDREN)
+          .map((c) => sanitizeMindMap(c, depth + 1, seen));
+  return {
+    ...node,
+    name: String(node.name || "Untitled").slice(0, 120),
+    children: kids,
+  };
+}
+
+function ensureIds(node: MindMapNode, prefix = "n", depth = 0): MindMapNode {
   const id = node.id || `${prefix}-${Math.random().toString(36).slice(2, 8)}`;
   return {
     ...node,
     id,
-    children: node.children?.map((c, i) => ensureIds(c, `${id}-${i}`)),
+    children:
+      depth >= MAX_MIND_MAP_DEPTH
+        ? []
+        : node.children
+            ?.slice(0, MAX_MIND_MAP_CHILDREN)
+            .map((c, i) => ensureIds(c, `${id}-${i}`, depth + 1)),
   };
 }
 
-function toTreeData(node: MindMapNode, focusPath: string[]): TreeNode {
+function toTreeData(
+  node: MindMapNode,
+  focusPath: string[],
+  depth = 0
+): TreeNode {
   const focused = focusPath.includes(node.name);
   return {
     name: node.name,
     attributes: focused ? { focused: "1" } : undefined,
     __id: node.id,
     __collapsed: node.collapsed,
-    children: node.collapsed
-      ? undefined
-      : node.children?.map((c) => toTreeData(c, focusPath)),
+    children:
+      node.collapsed || depth >= MAX_MIND_MAP_DEPTH
+        ? undefined
+        : node.children?.map((c) => toTreeData(c, focusPath, depth + 1)),
   };
 }
 
 function findPath(
   node: MindMapNode,
   target: string,
-  trail: string[] = []
+  trail: string[] = [],
+  depth = 0
 ): string[] | null {
+  if (depth > MAX_MIND_MAP_DEPTH) return null;
   const next = [...trail, node.name];
   if (node.name === target) return next;
   for (const child of node.children ?? []) {
-    const found = findPath(child, target, next);
+    const found = findPath(child, target, next, depth + 1);
     if (found) return found;
   }
   return null;
@@ -108,7 +146,7 @@ export function MindMapPanel({
   onJumpToCards,
 }: MindMapPanelProps) {
   const [tree, setTree] = useState<MindMapNode | null>(
-    mindMap ? ensureIds(mindMap) : null
+    mindMap ? ensureIds(sanitizeMindMap(mindMap)) : null
   );
   const [focusName, setFocusName] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -116,6 +154,12 @@ export function MindMapPanel({
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const exportRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setTree(mindMap ? ensureIds(sanitizeMindMap(mindMap)) : null);
+    setFocusName(null);
+    setSelectedId(null);
+  }, [mindMap]);
 
   const focusPath = useMemo(() => {
     if (!tree || !focusName) return [] as string[];
