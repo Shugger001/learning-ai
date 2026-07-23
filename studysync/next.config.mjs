@@ -1,11 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    serverComponentsExternalPackages: [
-      "pdf-parse",
-      "pdfjs-dist",
-      "@napi-rs/canvas",
-    ],
+    serverComponentsExternalPackages: ["unpdf"],
     serverActions: {
       bodySizeLimit: "50mb",
     },

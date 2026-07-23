@@ -1,6 +1,5 @@
 import { transcribeAudio } from "@/lib/ai/generate";
 import { extractTextFromPptx } from "@/lib/ai/pptx";
-import { ensurePdfDomPolyfills } from "@/lib/ai/pdf-polyfill";
 import type { ContentType } from "@/types/database";
 
 function isPptxFilename(filename: string): boolean {
@@ -24,18 +23,17 @@ export async function extractTextFromBuffer(params: {
       return extractTextFromPptx(buffer);
     }
 
-    await ensurePdfDomPolyfills();
-    const { PDFParse } = await import("pdf-parse");
-    const parser = new PDFParse({ data: new Uint8Array(buffer) });
-    try {
-      const result = await parser.getText();
-      if (!result.text?.trim()) {
-        throw new Error("Could not extract text from PDF");
-      }
-      return result.text;
-    } finally {
-      await parser.destroy().catch(() => undefined);
+    // unpdf is built for serverless (no pdf.worker.mjs fake-worker path issues)
+    const { extractText, getDocumentProxy } = await import("unpdf");
+    const pdf = await getDocumentProxy(new Uint8Array(buffer));
+    const result = await extractText(pdf, { mergePages: true });
+    const text = Array.isArray(result.text)
+      ? result.text.join("\n\n")
+      : String(result.text ?? "");
+    if (!text.trim()) {
+      throw new Error("Could not extract text from PDF");
     }
+    return text;
   }
 
   if (contentType === "audio" || contentType === "video") {
