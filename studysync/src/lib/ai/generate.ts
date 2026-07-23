@@ -2,6 +2,12 @@ import OpenAI, { toFile } from "openai";
 import { z } from "zod";
 import type { DetailLevel, LearnerBand, MindMapNode } from "@/types/database";
 import { learnerPromptGuidance } from "@/lib/learner/bands";
+import {
+  polishDirectQuestion,
+  polishGeneratedMaterials,
+} from "@/lib/ai/polish-questions";
+
+export { polishDirectQuestion, polishGeneratedMaterials } from "@/lib/ai/polish-questions";
 
 const flashcardSchema = z.object({
   question: z.string(),
@@ -173,6 +179,8 @@ Return ONLY valid JSON matching this shape:
 }
 Rules:
 - Generate exactly ${params.flashcardCount} flashcards for active recall.
+- Flashcard questions must be DIRECT about the subject (a term, fact, process, or relationship). Answers should be concise and studyable.
+- NEVER write flashcards or quizzes that mention slide numbers, "Slide N", "this slide", "what is covered in…", "key idea of…", or other source structure.
 - Generate exactly ${quizCount} quiz questions mixing mcq, fill_blank, and short_answer (prefer ~60% mcq).
 - Questions must be DIRECT about the subject matter. Test a fact, term, relationship, or skill from the content.
 - NEVER mention slide numbers, "Slide N", "this slide", "the deck", "key idea of …", or other source structure.
@@ -209,16 +217,19 @@ Rules:
       quizCount,
       titleHint: parsed.title,
     });
-    return {
+    return polishGeneratedMaterials({
       ...parsed,
       summary:
         parsed.summary?.trim().length > 40 ? parsed.summary : fallback.summary,
       notes: fallback.notes,
       mind_map: parsed.mind_map?.name ? parsed.mind_map : fallback.mind_map,
-    };
+      flashcards:
+        parsed.flashcards?.length > 0 ? parsed.flashcards : fallback.flashcards,
+      quizzes: parsed.quizzes?.length > 0 ? parsed.quizzes : fallback.quizzes,
+    });
   }
 
-  return parsed;
+  return polishGeneratedMaterials(parsed);
 }
 
 /** Deterministic fallback when OPENAI_API_KEY is missing (local demos). */
@@ -320,7 +331,7 @@ export function generateMockMaterials(params: {
     };
   });
 
-  return {
+  return polishGeneratedMaterials({
     title,
     summary,
     notes: `# ${title}\n\n## Overview\n\n${summary}\n\n${notesBody}\n`,
@@ -333,7 +344,7 @@ export function generateMockMaterials(params: {
         children: [{ name: "Key points" }],
       })),
     },
-  };
+  });
 }
 
 function splitIntoSections(
@@ -404,7 +415,18 @@ Rules:
   const parsed = z
     .object({ quizzes: z.array(quizSchema) })
     .parse(JSON.parse(raw));
-  return parsed.quizzes;
+  return parsed.quizzes.map((q) => ({
+    ...q,
+    question: polishDirectQuestion(
+      q.question,
+      q.correct_answer,
+      q.quiz_type === "mcq" ||
+        q.quiz_type === "fill_blank" ||
+        q.quiz_type === "short_answer"
+        ? q.quiz_type
+        : "quiz"
+    ),
+  }));
 }
 
 export async function generatePodcastScript(sourceText: string, title: string) {

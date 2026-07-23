@@ -10,6 +10,7 @@ import { MarkdownMath } from "@/components/ui/markdown-math";
 import { cn } from "@/lib/utils/cn";
 import { enqueueOfflineRating } from "@/lib/pwa/offline-review-queue";
 import { useToast } from "@/components/ui/toast";
+import { polishDirectQuestion } from "@/lib/ai/polish-questions";
 import type { ApiResponse } from "@/types/api";
 import type { Flashcard, OcclusionRect } from "@/types/database";
 
@@ -416,7 +417,9 @@ export function FlashcardsPanel({
                     </div>
                   ) : (
                     <div className="font-display text-xl font-semibold leading-snug tracking-tight sm:text-2xl">
-                      <MarkdownMath>{card.question}</MarkdownMath>
+                      <MarkdownMath>
+                        {polishDirectQuestion(card.question, card.answer)}
+                      </MarkdownMath>
                     </div>
                   )}
                   {!editing ? (

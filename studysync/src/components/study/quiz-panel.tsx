@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { ProcessingBar } from "@/components/ui/processing-bar";
 import { MarkdownMath } from "@/components/ui/markdown-math";
 import { useToast } from "@/components/ui/toast";
+import { polishDirectQuestion } from "@/lib/ai/polish-questions";
 import type { ApiResponse } from "@/types/api";
 import type { Quiz, QuizAttempt, QuizType } from "@/types/database";
 
@@ -21,11 +22,16 @@ const PRACTICE_TYPES: { id: QuizType; label: string }[] = [
   { id: "short_answer", label: "Short answer" },
 ];
 
-/** Strip redundant type labels the UI already shows. */
-function displayQuizQuestion(question: string) {
-  return question
-    .replace(/^(fill\s*in\s*the\s*blank|multiple\s*choice|short\s*answer)\s*:\s*/i, "")
-    .trim();
+function displayQuizQuestion(quiz: Quiz) {
+  return polishDirectQuestion(
+    quiz.question,
+    quiz.correct_answer,
+    quiz.quiz_type === "mcq" ||
+      quiz.quiz_type === "fill_blank" ||
+      quiz.quiz_type === "short_answer"
+      ? quiz.quiz_type
+      : "quiz"
+  );
 }
 
 function CountUp({ value }: { value: number }) {
@@ -503,7 +509,7 @@ export function QuizPanel({
           className="space-y-6"
         >
           <h2 className="font-display text-xl font-semibold leading-snug tracking-tight sm:text-2xl">
-            <MarkdownMath>{quiz.question}</MarkdownMath>
+            <MarkdownMath>{displayQuizQuestion(quiz)}</MarkdownMath>
           </h2>
 
           {type === "mcq" ? (
