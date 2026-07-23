@@ -133,6 +133,9 @@ export function Navbar({ userEmail, userName }: NavbarProps) {
                 <Link href="/compare">Compare studies</Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild className="cursor-pointer">
+                <Link href="/admin">Admin command</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild className="cursor-pointer">
                 <Link href="/library">Premade library</Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild className="cursor-pointer">

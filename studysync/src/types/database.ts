@@ -30,6 +30,7 @@ export interface Profile {
   xp: number;
   level: number;
   progress_share_token?: string | null;
+  is_admin?: boolean;
   created_at: string;
   updated_at: string;
 }

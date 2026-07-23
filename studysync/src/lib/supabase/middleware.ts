@@ -13,6 +13,8 @@ const protectedPrefixes = [
   "/rooms",
   "/plan",
   "/exam",
+  "/compare",
+  "/admin",
 ];
 const authRoutes = ["/login", "/signup"];
 
