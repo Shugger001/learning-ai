@@ -21,6 +21,13 @@ const PRACTICE_TYPES: { id: QuizType; label: string }[] = [
   { id: "short_answer", label: "Short answer" },
 ];
 
+/** Strip redundant type labels the UI already shows. */
+function displayQuizQuestion(question: string) {
+  return question
+    .replace(/^(fill\s*in\s*the\s*blank|multiple\s*choice|short\s*answer)\s*:\s*/i, "")
+    .trim();
+}
+
 function CountUp({ value }: { value: number }) {
   const [display, setDisplay] = useState(0);
   useEffect(() => {

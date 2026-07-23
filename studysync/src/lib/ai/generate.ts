@@ -174,9 +174,12 @@ Return ONLY valid JSON matching this shape:
 Rules:
 - Generate exactly ${params.flashcardCount} flashcards for active recall.
 - Generate exactly ${quizCount} quiz questions mixing mcq, fill_blank, and short_answer (prefer ~60% mcq).
-- For mcq: provide exactly 4 options; correct_answer must match one option.
-- For fill_blank: options can be []; question should include a blank like "____"; correct_answer is the missing word/phrase.
-- For short_answer: options can be []; correct_answer is a concise model answer.
+- Questions must be DIRECT about the subject matter. Test a fact, term, relationship, or skill from the content.
+- NEVER mention slide numbers, "Slide N", "this slide", "the deck", "key idea of …", or other source structure.
+- Do NOT start questions with "Fill in the blank:" / "Multiple choice:" — the UI already labels the type.
+- For mcq: provide exactly 4 options; correct_answer must match one option; stem asks a clear question.
+- For fill_blank: options can be []; write a natural sentence with "____" where the answer goes (e.g. "Photosynthesis occurs in the ____."); correct_answer is the missing word/phrase.
+- For short_answer: options can be []; ask a concrete question; correct_answer is a concise model answer.
 - ${notesGuidance}
 - Notes MUST use proper markdown: # / ## headings, bullet lists, and short paragraphs - never one word per line.
 - Rewrite slide fragments into coherent study prose; do not dump raw OCR/slide text.
@@ -262,49 +265,57 @@ export function generateMockMaterials(params: {
 
   const flashcards = Array.from({ length: params.flashcardCount }, (_, i) => {
     const section = slides[i % Math.max(slides.length, 1)];
+    const focus = (section?.heading ?? "").replace(
+      /^slide\s+\d+\s*[:.-]?\s*/i,
+      ""
+    );
     return {
-      question: section
-        ? `What is covered in “${section.heading}”?`
+      question: focus
+        ? `What should you remember about ${focus}?`
         : `Key concept #${i + 1} from ${title}?`,
       answer: section
-        ? section.body.slice(0, 180) || `Review section ${i + 1} of ${title}.`
+        ? section.body.slice(0, 180) || `Review ${focus || `section ${i + 1}`} of ${title}.`
         : `Review point ${i + 1} from ${title}.`,
     };
   });
 
   const quizzes = Array.from({ length: quizCount }, (_, i) => {
     const section = slides[i % Math.max(slides.length, 1)];
-    const focus = section?.heading ?? `topic ${i + 1}`;
-    const correct = `Core idea from ${focus}`;
+    const focus = (section?.heading ?? `concept ${i + 1}`).replace(
+      /^slide\s+\d+\s*[:.-]?\s*/i,
+      ""
+    ) || `concept ${i + 1}`;
+    const snippet =
+      section?.body.replace(/\s+/g, " ").trim().slice(0, 80) || focus;
     const kind = i % 3;
     if (kind === 1) {
       return {
-        question: `Fill in the blank: The key idea of “${focus}” is ____.`,
+        question: `${focus} is best described as ____.`,
         options: [],
-        correct_answer: focus,
-        explanation: `This checks recall of ${focus}.`,
+        correct_answer: snippet.slice(0, 60) || focus,
+        explanation: `Recall what ${focus} means in this material.`,
         quiz_type: "fill_blank" as const,
       };
     }
     if (kind === 2) {
       return {
-        question: `In your own words, explain “${focus}” from ${title}.`,
+        question: `What does ${focus} mean, and why does it matter?`,
         options: [],
-        correct_answer: section?.body.slice(0, 120) || correct,
+        correct_answer: section?.body.slice(0, 120) || snippet,
         explanation: `Compare your answer to the model response.`,
         quiz_type: "short_answer" as const,
       };
     }
     return {
-      question: `Which statement best matches “${focus}” in ${title}?`,
+      question: `Which statement about ${focus} is most accurate?`,
       options: [
-        correct,
+        snippet || `A correct point about ${focus}`,
         "An unrelated detail not covered in the material",
         "A contradiction of the lecture content",
         "None of the above",
       ],
-      correct_answer: correct,
-      explanation: `This question checks understanding of ${focus}.`,
+      correct_answer: snippet || `A correct point about ${focus}`,
+      explanation: `This checks understanding of ${focus}.`,
       quiz_type: "mcq" as const,
     };
   });
@@ -380,7 +391,10 @@ export async function generatePracticeQuestions(params: {
       {
         role: "system",
         content: `Generate exactly ${count} practice questions as JSON: { "quizzes": [{ question, options, correct_answer, explanation, quiz_type }] }.
-Allowed quiz_type values: ${types.join(", ")}. Mix types. For mcq use 4 options.`,
+Allowed quiz_type values: ${types.join(", ")}. Mix types. For mcq use 4 options.
+Rules:
+- Ask DIRECT questions about the subject (facts, terms, relationships)—never "Slide N", "key idea of …", or source structure.
+- Do not prefix with "Fill in the blank:" or similar; put ____ inside a natural sentence for fill_blank.`,
       },
       { role: "user", content: truncated },
     ],
