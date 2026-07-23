@@ -114,8 +114,19 @@ export interface Flashcard {
   reps: number;
   due_at: string;
   content_key?: string | null;
+  image_url?: string | null;
+  occlusion?: OcclusionRect[] | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface OcclusionRect {
+  id: string;
+  x: number; // 0–100 percent
+  y: number;
+  w: number;
+  h: number;
+  label?: string;
 }
 
 export interface Quiz {
@@ -166,6 +177,8 @@ export interface ClassAssignment {
   title: string | null;
   due_at: string | null;
   created_by: string;
+  exit_ticket_required?: boolean;
+  exit_ticket_quiz_ids?: string[];
   created_at: string;
 }
 
@@ -176,6 +189,9 @@ export interface AssignmentProgress {
   cards_reviewed: number;
   last_reviewed_at: string | null;
   completed_at: string | null;
+  exit_ticket_score?: number | null;
+  exit_ticket_total?: number | null;
+  exit_ticket_at?: string | null;
 }
 
 export interface EmailPreferences {

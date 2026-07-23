@@ -11,6 +11,7 @@ import {
   gradeStatus,
   type GradeStatus,
 } from "@/lib/classes/gradebook";
+import { ExitTicketPanel } from "@/components/classes/exit-ticket-panel";
 import { cn } from "@/lib/utils/cn";
 import type { ApiResponse } from "@/types/api";
 import type {
@@ -68,6 +69,7 @@ export function ClassDetailClient() {
   const [email, setEmail] = useState("");
   const [studyId, setStudyId] = useState("");
   const [dueAt, setDueAt] = useState("");
+  const [exitTicket, setExitTicket] = useState(false);
   const [announceBody, setAnnounceBody] = useState("");
   const [announcements, setAnnouncements] = useState<ClassAnnouncement[]>([]);
   const [message, setMessage] = useState<string | null>(null);
@@ -135,8 +137,10 @@ export function ClassDetailClient() {
       completedAt: p?.completed_at ?? null,
       lastReviewedAt: p?.last_reviewed_at ?? null,
       dueAt: assignment.due_at,
+      exitTicketRequired: Boolean(assignment.exit_ticket_required),
+      exitTicketAt: p?.exit_ticket_at ?? null,
     });
-    return { pct, status, reviewed };
+    return { pct, status, reviewed, ticket: p };
   }
 
   const gradebookSummary = useMemo(() => {
@@ -160,6 +164,8 @@ export function ClassDetailClient() {
           completedAt: p?.completed_at ?? null,
           lastReviewedAt: p?.last_reviewed_at ?? null,
           dueAt: a.due_at,
+          exitTicketRequired: Boolean(a.exit_ticket_required),
+          exitTicketAt: p?.exit_ticket_at ?? null,
         });
         if (status === "done") done += 1;
         if (status === "stuck") stuck += 1;
@@ -205,6 +211,7 @@ export function ClassDetailClient() {
       body: JSON.stringify({
         study_id: studyId,
         due_at: dueAt || null,
+        exit_ticket_required: exitTicket,
       }),
     });
     const json = (await res.json()) as ApiResponse<AssignmentRow>;
@@ -215,6 +222,7 @@ export function ClassDetailClient() {
     }
     setStudyId("");
     setDueAt("");
+    setExitTicket(false);
     await load();
   }
 
@@ -470,6 +478,14 @@ export function ClassDetailClient() {
                 onChange={(e) => setDueAt(e.target.value)}
                 aria-label="Due date"
               />
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={exitTicket}
+                  onChange={(e) => setExitTicket(e.target.checked)}
+                />
+                Exit ticket
+              </label>
               <Button
                 type="button"
                 disabled={busy || !studyId}
@@ -537,13 +553,21 @@ export function ClassDetailClient() {
                       </div>
                     </td>
                     {assignments.map((a) => {
-                      const { pct, status } = cell(a, m);
+                      const { pct, status, ticket } = cell(a, m);
                       return (
                         <td key={a.id} className="px-3 py-2 align-top">
                           <div className="font-medium">{pct}%</div>
                           <div className={cn("text-xs", statusClass(status))}>
                             {STATUS_LABEL[status]}
                           </div>
+                          {a.exit_ticket_required ? (
+                            <div className="mt-1 text-[11px] text-muted-foreground">
+                              Ticket{" "}
+                              {ticket?.exit_ticket_at
+                                ? `${ticket.exit_ticket_score}/${ticket.exit_ticket_total}`
+                                : "—"}
+                            </div>
+                          ) : null}
                           <div className="mt-1 h-1.5 w-full max-w-[6rem] bg-muted">
                             <div
                               className="h-full bg-primary"
@@ -618,6 +642,7 @@ export function ClassDetailClient() {
                         {a.due_at
                           ? ` · due ${new Date(a.due_at).toLocaleDateString()}`
                           : ""}
+                        {a.exit_ticket_required ? " · exit ticket" : ""}
                       </p>
                     </div>
                     <div className="flex gap-2">
@@ -646,6 +671,12 @@ export function ClassDetailClient() {
                       ) : null}
                     </div>
                   </div>
+                  {!isOwner && a.exit_ticket_required ? (
+                    <ExitTicketPanel
+                      classId={classId}
+                      assignmentId={a.id}
+                    />
+                  ) : null}
                   {isOwner ? (
                     <ul className="mt-3 space-y-1 border-t border-border/60 pt-3 text-xs text-muted-foreground">
                       {students.map((m) => {

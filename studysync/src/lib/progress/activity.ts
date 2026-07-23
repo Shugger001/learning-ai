@@ -16,6 +16,7 @@ export async function recordStudyActivity(
   delta: {
     cardsReviewed?: number;
     quizzesTaken?: number;
+    minutesStudied?: number;
     studyId?: string;
   }
 ) {
@@ -23,37 +24,42 @@ export async function recordStudyActivity(
   try {
     admin = createAdminClient();
   } catch {
-    return;
+    return { xp: 0, level: 1, gained: 0, badges: [] as string[] };
   }
 
   const day = todayUtc();
   const cards = delta.cardsReviewed ?? 0;
   const quizzes = delta.quizzesTaken ?? 0;
+  const minutes = delta.minutesStudied ?? 0;
 
   const { data: existing } = await admin
     .from("study_activity")
-    .select("id, cards_reviewed, quizzes_taken")
+    .select("id, cards_reviewed, quizzes_taken, minutes_studied")
     .eq("user_id", userId)
     .eq("activity_date", day)
     .maybeSingle();
 
   if (existing) {
-    await admin
-      .from("study_activity")
-      .update({
-        cards_reviewed: (existing.cards_reviewed ?? 0) + cards,
-        quizzes_taken: (existing.quizzes_taken ?? 0) + quizzes,
-      })
-      .eq("id", existing.id);
+    const patch: Record<string, number> = {
+      cards_reviewed: (existing.cards_reviewed ?? 0) + cards,
+      quizzes_taken: (existing.quizzes_taken ?? 0) + quizzes,
+    };
+    if (minutes > 0) {
+      patch.minutes_studied = Number(existing.minutes_studied ?? 0) + minutes;
+    }
+    await admin.from("study_activity").update(patch).eq("id", existing.id);
   } else {
     const { error } = await admin.from("study_activity").insert({
       user_id: userId,
       activity_date: day,
       cards_reviewed: cards,
       quizzes_taken: quizzes,
+      minutes_studied: minutes,
     });
     // Table may not exist until migration is applied.
-    if (error) return;
+    if (error) {
+      return { xp: 0, level: 1, gained: 0, badges: [] as string[] };
+    }
   }
 
   const { data: profile } = await admin
@@ -62,7 +68,9 @@ export async function recordStudyActivity(
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (!profile) return;
+  if (!profile) {
+    return { xp: 0, level: 1, gained: 0, badges: [] as string[] };
+  }
 
   const last = profile.last_study_date as string | null;
   let current = Number(profile.current_streak ?? 0);
@@ -86,9 +94,10 @@ export async function recordStudyActivity(
     })
     .eq("user_id", userId);
 
+  let awards = { xp: 0, level: 1, gained: 0, badges: [] as string[] };
   if (cards > 0) {
     const { awardXp } = await import("@/lib/progress/xp");
-    await awardXp(userId, { type: "card_review", streak: current });
+    awards = await awardXp(userId, { type: "card_review", streak: current });
   }
 
   // Bump progress for teacher packs and student assignment copies
@@ -147,4 +156,6 @@ export async function recordStudyActivity(
       }
     }
   }
+
+  return awards;
 }

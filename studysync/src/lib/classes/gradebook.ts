@@ -30,16 +30,23 @@ export function gradeStatus(params: {
   completedAt: string | null;
   lastReviewedAt: string | null;
   dueAt: string | null;
+  exitTicketRequired?: boolean;
+  exitTicketAt?: string | null;
   now?: Date;
 }): GradeStatus {
   const now = params.now ?? new Date();
   if (!params.acceptedAt) return "pending";
-  if (isAssignmentComplete(params.cardsReviewed, params.flashcardCount, params.completedAt)) {
-    return "done";
-  }
+  const cardsDone = isAssignmentComplete(
+    params.cardsReviewed,
+    params.flashcardCount,
+    params.completedAt
+  );
+  const ticketDone =
+    !params.exitTicketRequired || Boolean(params.exitTicketAt);
+  if (cardsDone && ticketDone) return "done";
   const overdue =
     params.dueAt && new Date(params.dueAt).getTime() < now.getTime();
-  if (params.cardsReviewed <= 0) {
+  if (params.cardsReviewed <= 0 && !params.exitTicketAt) {
     return overdue ? "overdue" : "not_started";
   }
   if (params.lastReviewedAt) {

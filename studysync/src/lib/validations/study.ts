@@ -25,6 +25,20 @@ export const updateFlashcardSchema = z.object({
   answer: z.string().min(1).optional(),
   difficulty: z.enum(["easy", "medium", "hard"]).optional(),
   srs_rating: z.enum(["again", "hard", "good", "easy"]).optional(),
+  image_url: z.string().url().nullable().optional(),
+  occlusion: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        x: z.number().min(0).max(100),
+        y: z.number().min(0).max(100),
+        w: z.number().min(1).max(100),
+        h: z.number().min(1).max(100),
+        label: z.string().max(80).optional(),
+      })
+    )
+    .max(20)
+    .optional(),
 });
 
 const mindMapNodeSchema: z.ZodType<{

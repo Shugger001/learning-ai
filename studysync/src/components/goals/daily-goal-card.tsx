@@ -10,7 +10,11 @@ import type { DailyGoal } from "@/lib/goals/daily";
 
 type GoalPayload = {
   goal: DailyGoal;
-  progress: { cardsReviewed: number; quizzesTaken: number };
+  progress: {
+    cardsReviewed: number;
+    quizzesTaken: number;
+    minutesStudied?: number;
+  };
   freeMinutes: number;
 };
 
@@ -64,9 +68,16 @@ export function DailyGoalCard({ compact = false }: { compact?: boolean }) {
             Today&apos;s goal
           </p>
           <p className="mt-1 font-display text-xl font-semibold tracking-tight">
-            {goal.cardTarget} cards · {goal.quizTarget} quiz Qs
+            {goal.cardTarget} cards · {goal.quizTarget} quiz Qs · {goal.minutes}{" "}
+            min
           </p>
           <p className="text-xs text-muted-foreground">{goal.reason}</p>
+          {typeof progress.minutesStudied === "number" &&
+          progress.minutesStudied > 0 ? (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Focus logged: {progress.minutesStudied} min today
+            </p>
+          ) : null}
         </div>
         {!compact ? (
           <Button asChild size="sm">

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Bricolage_Grotesque, Source_Sans_3 } from "next/font/google";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { ToastProvider } from "@/components/ui/toast";
 import { RegisterServiceWorker } from "@/components/pwa/register-sw";
 import "./globals.css";
 
@@ -51,8 +52,10 @@ export default function RootLayout({
       <body className={`${body.variable} ${display.variable} font-sans antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <QueryProvider>
-            {children}
-            <RegisterServiceWorker />
+            <ToastProvider>
+              {children}
+              <RegisterServiceWorker />
+            </ToastProvider>
           </QueryProvider>
         </ThemeProvider>
       </body>

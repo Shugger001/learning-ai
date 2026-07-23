@@ -21,6 +21,7 @@ import { StudyCard } from "@/components/dashboard/study-card";
 import { FolderBar } from "@/components/dashboard/folder-bar";
 import { FirstRunTour } from "@/components/onboarding/first-run-tour";
 import { DailyGoalCard } from "@/components/goals/daily-goal-card";
+import { HabitStrip } from "@/components/dashboard/habit-strip";
 import { Button } from "@/components/ui/button";
 import { ProcessingBar } from "@/components/ui/processing-bar";
 import { AnimatedNumber } from "@/components/ui/animated-number";
@@ -51,6 +52,8 @@ interface DashboardClientProps {
   usage: UsageRemaining | null;
   userName?: string | null;
   onboardingCompleted?: boolean;
+  xp?: number;
+  level?: number;
 }
 
 const PRIMARY_START: {
@@ -117,6 +120,8 @@ export function DashboardClient({
   usage,
   userName,
   onboardingCompleted = true,
+  xp = 0,
+  level = 1,
 }: DashboardClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -407,7 +412,8 @@ export function DashboardClient({
         </div>
       </section>
 
-      <div className="mt-8">
+      <div className="mt-8 space-y-4">
+        <HabitStrip xp={xp} level={level} dueToday={dueCount} />
         <DailyGoalCard />
       </div>
 

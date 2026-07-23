@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Loader2, Swords, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MarkdownMath } from "@/components/ui/markdown-math";
+import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils/cn";
 import type { ApiResponse } from "@/types/api";
 import type { Quiz } from "@/types/database";
@@ -31,6 +32,7 @@ export function QuizBattlePanel({
   roomCode: string;
   isHost: boolean;
 }) {
+  const { pushXp } = useToast();
   const [battle, setBattle] = useState<Battle | null>(null);
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [index, setIndex] = useState(0);
@@ -186,8 +188,21 @@ export function QuizBattlePanel({
   useEffect(() => {
     if (!done || xpAwardedRef.current) return;
     xpAwardedRef.current = true;
-    void fetch("/api/xp/battle", { method: "POST" }).catch(() => undefined);
-  }, [done]);
+    void fetch("/api/xp/battle", { method: "POST" })
+      .then((r) => r.json())
+      .then(
+        (
+          json: ApiResponse<{
+            gained?: number;
+            level?: number;
+            badges?: string[];
+          }>
+        ) => {
+          if (json.success) pushXp(json.data);
+        }
+      )
+      .catch(() => undefined);
+  }, [done, pushXp]);
 
   async function startBattle() {
     setBusy(true);

@@ -5,11 +5,13 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { MarkdownMath } from "@/components/ui/markdown-math";
 import { cn } from "@/lib/utils/cn";
 import { enqueueOfflineRating } from "@/lib/pwa/offline-review-queue";
+import { useToast } from "@/components/ui/toast";
 import type { ApiResponse } from "@/types/api";
-import type { Flashcard } from "@/types/database";
+import type { Flashcard, OcclusionRect } from "@/types/database";
 
 interface FlashcardsPanelProps {
   flashcards: Flashcard[];
@@ -43,6 +45,8 @@ export function FlashcardsPanel({
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [direction, setDirection] = useState(1);
+  const [revealedOcclusions, setRevealedOcclusions] = useState<string[]>([]);
+  const { pushXp } = useToast();
 
   const focusedCards = useMemo(() => {
     if (!focusQuery?.trim()) return null;
@@ -71,6 +75,7 @@ export function FlashcardsPanel({
   useEffect(() => {
     setIndex(0);
     setFlipped(false);
+    setRevealedOcclusions([]);
     if (focusQuery) setDueOnly(false);
   }, [focusQuery]);
 
@@ -91,6 +96,11 @@ export function FlashcardsPanel({
     // Intentionally omit queue identity; index + length cover focus changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, queue.length, onFocusCard]);
+
+  useEffect(() => {
+    setRevealedOcclusions([]);
+    setFlipped(false);
+  }, [index]);
 
   if (cards.length === 0) {
     return (
@@ -179,11 +189,17 @@ export function FlashcardsPanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ srs_rating }),
       });
-      const json = (await res.json()) as ApiResponse<Flashcard>;
+      const json = (await res.json()) as ApiResponse<
+        Flashcard & {
+          awards?: { gained?: number; level?: number; badges?: string[] };
+        }
+      >;
       if (json.success) {
+        const { awards, ...cardData } = json.data;
+        pushXp(awards);
         if (!compact) {
           setCards((prev) =>
-            prev.map((c) => (c.id === card.id ? { ...c, ...json.data } : c))
+            prev.map((c) => (c.id === card.id ? { ...c, ...cardData } : c))
           );
         }
         advanceLocal();
@@ -207,10 +223,33 @@ export function FlashcardsPanel({
       body: JSON.stringify({
         question: card.question,
         answer: card.answer,
+        image_url: card.image_url || null,
+        occlusion: card.occlusion ?? [],
       }),
     });
     setSaving(false);
     if ((await res.json()).success) setEditing(false);
+  }
+
+  const occlusions: OcclusionRect[] = Array.isArray(card.occlusion)
+    ? card.occlusion
+    : [];
+
+  function addOcclusionBox() {
+    const next: OcclusionRect = {
+      id: `o-${Math.random().toString(36).slice(2, 8)}`,
+      x: 20,
+      y: 20,
+      w: 30,
+      h: 18,
+    };
+    setCards((prev) =>
+      prev.map((c) =>
+        c.id === card.id
+          ? { ...c, occlusion: [...(c.occlusion ?? []), next] }
+          : c
+      )
+    );
   }
 
   return (
@@ -275,21 +314,106 @@ export function FlashcardsPanel({
                   <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Question
                   </p>
+                  {card.image_url ? (
+                    <div
+                      className="relative mb-4 overflow-hidden border border-border/60"
+                      onClick={(e) => {
+                        if (editing) e.stopPropagation();
+                      }}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={card.image_url}
+                        alt=""
+                        className="max-h-56 w-full object-contain"
+                      />
+                      {occlusions.map((box) => {
+                        const revealed =
+                          flipped || revealedOcclusions.includes(box.id);
+                        return (
+                          <button
+                            key={box.id}
+                            type="button"
+                            className={cn(
+                              "absolute border border-white/40",
+                              revealed
+                                ? "bg-transparent"
+                                : "bg-foreground/90"
+                            )}
+                            style={{
+                              left: `${box.x}%`,
+                              top: `${box.y}%`,
+                              width: `${box.w}%`,
+                              height: `${box.h}%`,
+                            }}
+                            aria-label={
+                              revealed ? "Revealed region" : "Reveal region"
+                            }
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (editing) {
+                                setCards((prev) =>
+                                  prev.map((c) =>
+                                    c.id === card.id
+                                      ? {
+                                          ...c,
+                                          occlusion: (c.occlusion ?? []).filter(
+                                            (o) => o.id !== box.id
+                                          ),
+                                        }
+                                      : c
+                                  )
+                                );
+                                return;
+                              }
+                              setRevealedOcclusions((ids) =>
+                                ids.includes(box.id) ? ids : [...ids, box.id]
+                              );
+                            }}
+                          />
+                        );
+                      })}
+                    </div>
+                  ) : null}
                   {editing ? (
-                    <Textarea
-                      value={card.question}
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={(e) =>
-                        setCards((prev) =>
-                          prev.map((c) =>
-                            c.id === card.id
-                              ? { ...c, question: e.target.value }
-                              : c
+                    <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
+                      <Textarea
+                        value={card.question}
+                        onChange={(e) =>
+                          setCards((prev) =>
+                            prev.map((c) =>
+                              c.id === card.id
+                                ? { ...c, question: e.target.value }
+                                : c
+                            )
                           )
-                        )
-                      }
-                      className="min-h-[140px]"
-                    />
+                        }
+                        className="min-h-[100px]"
+                      />
+                      <Input
+                        value={card.image_url ?? ""}
+                        placeholder="Image URL for occlusion (optional)"
+                        onChange={(e) =>
+                          setCards((prev) =>
+                            prev.map((c) =>
+                              c.id === card.id
+                                ? { ...c, image_url: e.target.value || null }
+                                : c
+                            )
+                          )
+                        }
+                      />
+                      {card.image_url ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={addOcclusionBox}
+                        >
+                          Add hide box
+                        </Button>
+                      ) : null}
+                    </div>
                   ) : (
                     <div className="font-display text-xl font-semibold leading-snug tracking-tight sm:text-2xl">
                       <MarkdownMath>{card.question}</MarkdownMath>
@@ -297,7 +421,9 @@ export function FlashcardsPanel({
                   )}
                   {!editing ? (
                     <p className="mt-8 text-xs text-muted-foreground">
-                      Tap to reveal
+                      {card.image_url
+                        ? "Tap a box to reveal · tap card for answer"
+                        : "Tap to reveal"}
                     </p>
                   ) : null}
                 </div>

@@ -49,7 +49,7 @@ export async function GET() {
   const today = nowIso.slice(0, 10);
   const { data: activity } = await supabase
     .from("study_activity")
-    .select("cards_reviewed, quizzes_taken")
+    .select("cards_reviewed, quizzes_taken, minutes_studied")
     .eq("user_id", user.id)
     .eq("activity_date", today)
     .maybeSingle();
@@ -59,6 +59,7 @@ export async function GET() {
     progress: {
       cardsReviewed: activity?.cards_reviewed ?? 0,
       quizzesTaken: activity?.quizzes_taken ?? 0,
+      minutesStudied: activity?.minutes_studied ?? 0,
     },
     freeMinutes,
   });

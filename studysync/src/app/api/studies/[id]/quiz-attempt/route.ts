@@ -110,12 +110,12 @@ export async function POST(request: Request, { params }: RouteParams) {
   });
 
   const { awardXp } = await import("@/lib/progress/xp");
-  await awardXp(user.id, {
+  const awards = await awardXp(user.id, {
     type: "quiz",
     score,
     total,
     boss: Boolean(boss),
   });
 
-  return apiSuccess(data, 201);
+  return apiSuccess({ ...data, awards }, 201);
 }

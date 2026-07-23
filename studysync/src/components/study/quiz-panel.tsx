@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ProcessingBar } from "@/components/ui/processing-bar";
 import { MarkdownMath } from "@/components/ui/markdown-math";
+import { useToast } from "@/components/ui/toast";
 import type { ApiResponse } from "@/types/api";
 import type { Quiz, QuizAttempt, QuizType } from "@/types/database";
 
@@ -79,6 +80,7 @@ export function QuizPanel({
   maxQuestions,
   onComplete,
 }: QuizPanelProps) {
+  const { pushXp } = useToast();
   const [quizzes, setQuizzes] = useState(initial);
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
@@ -194,13 +196,18 @@ export function QuizPanel({
         boss: bossMode,
       }),
     });
-    const json = (await res.json()) as ApiResponse<QuizAttempt>;
+    const json = (await res.json()) as ApiResponse<
+      QuizAttempt & {
+        awards?: { gained?: number; level?: number; badges?: string[] };
+      }
+    >;
     if (json.success) {
       setLastAttempt(json.data);
       setSavedAttempt(true);
+      pushXp(json.data.awards);
     }
     finishingRef.current = false;
-  }, [queue, results, readOnly, studyId, onComplete, bossMode]);
+  }, [queue, results, readOnly, studyId, onComplete, bossMode, pushXp]);
 
   finishSessionRef.current = finishSession;
 

@@ -26,6 +26,8 @@ import { MindMapPanel } from "@/components/study/mindmap-panel";
 import { ChatPanel } from "@/components/study/chat-panel";
 import { PodcastPanel } from "@/components/study/podcast-panel";
 import { ProcessingView } from "@/components/study/processing-view";
+import { WhatNextCoach } from "@/components/study/what-next-coach";
+import { FocusModeControls } from "@/components/study/focus-mode";
 import { ShareInvitePanel } from "@/components/share/share-invite-panel";
 import { ExportPackMenu } from "@/components/study/export-pack-menu";
 import { useStudySessionStore } from "@/stores/study-session";
@@ -74,6 +76,7 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
   const [room, setRoom] = useState<StudyRoom | null>(null);
   const [focusedCard, setFocusedCard] = useState<Flashcard | null>(null);
   const [followCardId, setFollowCardId] = useState<string | null>(null);
+  const [focusMode, setFocusMode] = useState(false);
 
   const examMode = searchParams.get("exam") === "1";
   const bossMode = searchParams.get("boss") === "1";
@@ -265,67 +268,76 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
             {kindLabel}
           </Badge>
           <div className="flex flex-wrap items-center gap-1">
-            <ExportPackMenu study={study} />
-            {shareUrl ? (
+            <FocusModeControls
+              studyId={study.id}
+              active={focusMode}
+              onActiveChange={setFocusMode}
+            />
+            {!focusMode ? (
               <>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="text-muted-foreground"
-                  onClick={() => void navigator.clipboard.writeText(shareUrl)}
-                >
-                  <Link2 className="h-4 w-4" />
-                  Copy link
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="text-muted-foreground"
-                  onClick={() => setShowInvites((v) => !v)}
-                >
-                  <Mail className="h-4 w-4" />
-                  Invite
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="text-muted-foreground"
-                  onClick={() => void disableShare()}
-                >
-                  <Link2Off className="h-4 w-4" />
-                  Unshare
-                </Button>
+                <ExportPackMenu study={study} />
+                {shareUrl ? (
+                  <>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground"
+                      onClick={() => void navigator.clipboard.writeText(shareUrl)}
+                    >
+                      <Link2 className="h-4 w-4" />
+                      Copy link
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground"
+                      onClick={() => setShowInvites((v) => !v)}
+                    >
+                      <Mail className="h-4 w-4" />
+                      Invite
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground"
+                      onClick={() => void disableShare()}
+                    >
+                      <Link2Off className="h-4 w-4" />
+                      Unshare
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground"
+                      onClick={() => void enableShare()}
+                    >
+                      <Link2 className="h-4 w-4" />
+                      Share
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground"
+                      onClick={() => setShowInvites(true)}
+                    >
+                      <Mail className="h-4 w-4" />
+                      Invite
+                    </Button>
+                  </>
+                )}
               </>
-            ) : (
-              <>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="text-muted-foreground"
-                  onClick={() => void enableShare()}
-                >
-                  <Link2 className="h-4 w-4" />
-                  Share
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="text-muted-foreground"
-                  onClick={() => setShowInvites(true)}
-                >
-                  <Mail className="h-4 w-4" />
-                  Invite
-                </Button>
-              </>
-            )}
+            ) : null}
           </div>
         </div>
-        {showInvites ? (
+        {!focusMode && showInvites ? (
           <ShareInvitePanel
             studyId={study.id}
             onShareEnabled={(url) => {
@@ -337,6 +349,9 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
         <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
           {study.title}
         </h1>
+        {!focusMode ? (
+          <WhatNextCoach studyId={study.id} />
+        ) : null}
         {study.source_url ? (
           <a
             href={study.source_url}
@@ -469,33 +484,39 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
         </div>
       </div>
 
-      <Tabs
-        value={activeTab}
-        onValueChange={(v) => setActiveTab(v as StudyTab)}
-      >
-        <TabsList aria-label="Study materials" className="flex-wrap">
-          <TabsTrigger value="notes">Notes</TabsTrigger>
-          <TabsTrigger value="flashcards">Flashcards</TabsTrigger>
-          <TabsTrigger value="quiz">Quiz</TabsTrigger>
-          <TabsTrigger value="mindmap">Mind Map</TabsTrigger>
-          <TabsTrigger value="chat">Chat</TabsTrigger>
-          <TabsTrigger value="podcast">Podcast</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      {!focusMode ? (
+        <Tabs
+          value={activeTab}
+          onValueChange={(v) => setActiveTab(v as StudyTab)}
+        >
+          <TabsList aria-label="Study materials" className="flex-wrap">
+            <TabsTrigger value="notes">Notes</TabsTrigger>
+            <TabsTrigger value="flashcards">Flashcards</TabsTrigger>
+            <TabsTrigger value="quiz">Quiz</TabsTrigger>
+            <TabsTrigger value="mindmap">Mind Map</TabsTrigger>
+            <TabsTrigger value="chat">Chat</TabsTrigger>
+            <TabsTrigger value="podcast">Podcast</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          Focus mode — notes only. Timer counts toward today’s study minutes.
+        </p>
+      )}
 
       <div className="relative mt-6 min-h-[12rem]">
         <AnimatePresence mode="wait">
           <motion.div
-            key={activeTab}
+            key={focusMode ? "focus-notes" : activeTab}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.28, ease: EASE }}
           >
-            {activeTab === "notes" ? (
+            {focusMode || activeTab === "notes" ? (
               <NotesPanel note={study.notes} studyId={study.id} />
             ) : null}
-            {activeTab === "flashcards" ? (
+            {!focusMode && activeTab === "flashcards" ? (
               <FlashcardsPanel
                 flashcards={study.flashcards}
                 focusQuery={cardFocusQuery}
@@ -503,7 +524,7 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
                 followCardId={followCardId}
               />
             ) : null}
-            {activeTab === "quiz" ? (
+            {!focusMode && activeTab === "quiz" ? (
               <QuizPanel
                 studyId={study.id}
                 quizzes={study.quizzes}
@@ -513,7 +534,7 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
                 initialReviewIds={examWrongIds}
               />
             ) : null}
-            {activeTab === "mindmap" ? (
+            {!focusMode && activeTab === "mindmap" ? (
               <MindMapPanel
                 mindMap={study.notes?.mind_map ?? null}
                 noteId={study.notes?.id}
@@ -525,8 +546,8 @@ export function StudyWorkspace({ study }: { study: StudyWithMaterials }) {
                 }}
               />
             ) : null}
-            {activeTab === "chat" ? <ChatPanel studyId={study.id} /> : null}
-            {activeTab === "podcast" ? (
+            {!focusMode && activeTab === "chat" ? <ChatPanel studyId={study.id} /> : null}
+            {!focusMode && activeTab === "podcast" ? (
               <PodcastPanel studyId={study.id} title={study.title} />
             ) : null}
           </motion.div>

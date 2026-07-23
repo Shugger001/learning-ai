@@ -22,7 +22,7 @@ export default async function DashboardPage() {
     supabase
       .from("profiles")
       .select(
-        "full_name, plan, uploads_used, chat_used, podcasts_used, usage_reset_at, onboarding_completed"
+        "full_name, plan, uploads_used, chat_used, podcasts_used, usage_reset_at, onboarding_completed, xp, level"
       )
       .eq("user_id", user!.id)
       .single(),
@@ -42,10 +42,14 @@ export default async function DashboardPage() {
     podcasts_used: number | null;
     usage_reset_at?: string | null;
     onboarding_completed?: boolean | null;
+    xp?: number | null;
+    level?: number | null;
   } | null;
   if (
     profileRes.error?.message?.includes("usage_reset_at") ||
-    profileRes.error?.message?.includes("onboarding_completed")
+    profileRes.error?.message?.includes("onboarding_completed") ||
+    profileRes.error?.message?.includes("xp") ||
+    profileRes.error?.message?.includes("level")
   ) {
     const fallback = await supabase
       .from("profiles")
@@ -103,6 +107,8 @@ export default async function DashboardPage() {
         usage={usage}
         userName={userName}
         onboardingCompleted={onboardingCompleted}
+        xp={Number(profile?.xp ?? 0)}
+        level={Number(profile?.level ?? 1)}
       />
     </Suspense>
   );

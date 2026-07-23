@@ -28,6 +28,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       study_id: z.string().uuid(),
       title: z.string().max(200).optional(),
       due_at: z.string().optional().nullable(),
+      exit_ticket_required: z.boolean().optional(),
     })
     .safeParse(body);
   if (!parsed.success) {
@@ -44,6 +45,20 @@ export async function POST(request: Request, { params }: RouteParams) {
     return apiError("Pick a complete study from your library", 400);
   }
 
+  let exitTicketIds: string[] = [];
+  if (parsed.data.exit_ticket_required) {
+    const { data: quizzes } = await supabase
+      .from("quizzes")
+      .select("id")
+      .eq("study_id", study.id)
+      .order("position", { ascending: true })
+      .limit(3);
+    exitTicketIds = (quizzes ?? []).map((q) => q.id);
+    if (exitTicketIds.length === 0) {
+      return apiError("That study has no quizzes for an exit ticket", 400);
+    }
+  }
+
   const { data, error } = await supabase
     .from("class_assignments")
     .insert({
@@ -52,6 +67,8 @@ export async function POST(request: Request, { params }: RouteParams) {
       title: parsed.data.title?.trim() || study.title,
       due_at: parseDueAt(parsed.data.due_at),
       created_by: user.id,
+      exit_ticket_required: Boolean(parsed.data.exit_ticket_required),
+      exit_ticket_quiz_ids: exitTicketIds,
     })
     .select("*, studies(id, title, status, flashcard_count)")
     .single();
@@ -59,6 +76,12 @@ export async function POST(request: Request, { params }: RouteParams) {
   if (error) {
     if (error.message.includes("duplicate") || error.code === "23505") {
       return apiError("That pack is already assigned", 409);
+    }
+    if (error.message.includes("exit_ticket")) {
+      return apiError(
+        "Exit tickets need APPLY_HABITS_FOCUS_TICKETS.sql — run it in Supabase SQL Editor.",
+        503
+      );
     }
     return apiError(error.message, 500);
   }
